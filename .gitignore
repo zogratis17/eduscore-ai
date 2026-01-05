@@ -41,3 +41,5 @@ Thumbs.db
 # Project Specific
 data/*.faiss
 data/*.db
+DEV_PROGRESS.md
+tests/sample.docx
