@@ -1,0 +1,305 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* EduScore AI Design System - Modern AI-Education Theme */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    /* Core Brand Colors - Indigo/Blue AI Theme */
+    --background: 220 20% 97%;
+    --foreground: 220 30% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 10%;
+
+    /* Primary - Deep Indigo */
+    --primary: 234 85% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 234 85% 65%;
+    --primary-dark: 234 85% 45%;
+
+    /* Secondary - Soft Purple */
+    --secondary: 260 60% 96%;
+    --secondary-foreground: 260 50% 30%;
+
+    /* Accent - Teal/Cyan for AI vibes */
+    --accent: 190 80% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Muted */
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 10% 45%;
+
+    /* Success - Green */
+    --success: 150 70% 40%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning - Amber */
+    --warning: 40 95% 50%;
+    --warning-foreground: 40 95% 15%;
+
+    /* Destructive */
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 220 15% 90%;
+    --input: 220 15% 90%;
+    --ring: 234 85% 55%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar - Darker for contrast */
+    --sidebar-background: 234 40% 12%;
+    --sidebar-foreground: 220 20% 90%;
+    --sidebar-primary: 234 85% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 234 30% 20%;
+    --sidebar-accent-foreground: 220 20% 90%;
+    --sidebar-border: 234 30% 20%;
+    --sidebar-ring: 234 85% 60%;
+
+    /* Custom Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(234 85% 55%), hsl(260 70% 55%));
+    --gradient-hero: linear-gradient(135deg, hsl(234 85% 55%), hsl(190 80% 50%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 20% 98%));
+    --gradient-sidebar: linear-gradient(180deg, hsl(234 40% 12%), hsl(234 45% 8%));
+    --gradient-accent: linear-gradient(135deg, hsl(190 80% 50%), hsl(170 70% 45%));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px hsl(234 30% 20% / 0.05);
+    --shadow-md: 0 4px 12px hsl(234 30% 20% / 0.08);
+    --shadow-lg: 0 12px 40px hsl(234 30% 20% / 0.12);
+    --shadow-glow: 0 0 30px hsl(234 85% 55% / 0.2);
+    --shadow-card: 0 2px 8px hsl(234 30% 20% / 0.06), 0 8px 24px hsl(234 30% 20% / 0.06);
+
+    /* Animations */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 234 35% 8%;
+    --foreground: 220 20% 95%;
+
+    --card: 234 30% 12%;
+    --card-foreground: 220 20% 95%;
+
+    --popover: 234 30% 12%;
+    --popover-foreground: 220 20% 95%;
+
+    --primary: 234 85% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 234 30% 18%;
+    --secondary-foreground: 220 20% 90%;
+
+    --muted: 234 25% 18%;
+    --muted-foreground: 220 15% 60%;
+
+    --accent: 190 80% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 234 25% 20%;
+    --input: 234 25% 20%;
+    --ring: 234 85% 65%;
+
+    --sidebar-background: 234 40% 6%;
+    --sidebar-foreground: 220 20% 90%;
+    --sidebar-primary: 234 85% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 234 30% 15%;
+    --sidebar-accent-foreground: 220 20% 90%;
+    --sidebar-border: 234 25% 15%;
+    --sidebar-ring: 234 85% 65%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(234 85% 60%), hsl(260 70% 60%));
+    --gradient-card: linear-gradient(145deg, hsl(234 30% 14%), hsl(234 30% 11%));
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.2), 0 8px 24px hsl(0 0% 0% / 0.15);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    box-shadow: var(--shadow-card);
+  }
+
+  .stat-card {
+    @apply relative overflow-hidden rounded-xl bg-card p-6 transition-all duration-300;
+    box-shadow: var(--shadow-card);
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .sidebar-gradient {
+    background: var(--gradient-sidebar);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background: var(--gradient-primary);
+  }
+
+  .btn-primary-gradient {
+    background: var(--gradient-primary);
+    @apply text-primary-foreground shadow-md transition-all duration-300;
+  }
+
+  .btn-primary-gradient:hover {
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+  }
+
+  .input-focus {
+    @apply transition-all duration-200;
+  }
+
+  .input-focus:focus {
+    @apply ring-2 ring-primary/30 border-primary;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

@@ -1,1 +1,1 @@
-# eduscore-ai
+EduscoreAI frontend
