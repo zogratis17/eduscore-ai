@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-multipart
+pymupdf
+python-docx
+spacy
+faiss-cpu
+google-generativeai
+pydantic-settings
+requests
+sentence-transformers
