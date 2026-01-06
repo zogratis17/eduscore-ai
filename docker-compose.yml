@@ -1,0 +1,301 @@
+# docker-compose.yml - Development Environment
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # MongoDB Database
+  # ============================================================================
+  mongodb:
+    image: mongo:7.0
+    container_name: ai-eval-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-ai_evaluation}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - ai-eval-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # Redis Cache & Message Broker
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ai-eval-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai-eval-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # MinIO Object Storage (S3-compatible)
+  # ============================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: ai-eval-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - ai-eval-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ============================================================================
+  # LanguageTool Server (Grammar Checking)
+  # ============================================================================
+  languagetool:
+    image: erikvl87/languagetool:latest
+    container_name: ai-eval-languagetool
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    environment:
+      Java_Xms: 512m
+      Java_Xmx: 2g
+    networks:
+      - ai-eval-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/v2/languages"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================================
+  # FastAPI Backend
+  # ============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: ai-eval-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # App
+      APP_ENV: development
+      DEBUG: "true"
+      
+      # Database
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@mongodb:27017
+      MONGODB_DATABASE: ${MONGO_DATABASE:-ai_evaluation}
+      
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+      
+      # MinIO
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-changeme123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-documents}
+      
+      # LanguageTool
+      LANGUAGETOOL_URL: http://languagetool:8010
+      
+      # Firebase (from .env file)
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      
+      # AI Models
+      MODELS_PATH: /app/models
+      
+      # CORS
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+    volumes:
+      - ./backend:/app
+      - ./ai-models:/app/models
+      - uploads:/app/uploads
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      languagetool:
+        condition: service_healthy
+    networks:
+      - ai-eval-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ============================================================================
+  # Celery Worker (Background Tasks)
+  # ============================================================================
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: ../docker/worker.Dockerfile
+    container_name: ai-eval-worker
+    restart: unless-stopped
+    environment:
+      # Database
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@mongodb:27017
+      MONGODB_DATABASE: ${MONGO_DATABASE:-ai_evaluation}
+      
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+      
+      # MinIO
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-changeme123}
+      
+      # LanguageTool
+      LANGUAGETOOL_URL: http://languagetool:8010
+      
+      # AI Models
+      MODELS_PATH: /app/models
+    volumes:
+      - ./backend:/app
+      - ./ai-models:/app/models
+      - uploads:/app/uploads
+    depends_on:
+      - redis
+      - mongodb
+      - backend
+    networks:
+      - ai-eval-network
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
+
+  # ============================================================================
+  # Celery Beat (Scheduled Tasks)
+  # ============================================================================
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: ../docker/worker.Dockerfile
+    container_name: ai-eval-beat
+    restart: unless-stopped
+    environment:
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@mongodb:27017
+      MONGODB_DATABASE: ${MONGO_DATABASE:-ai_evaluation}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+      - mongodb
+    networks:
+      - ai-eval-network
+    command: celery -A app.workers.celery_app beat --loglevel=info
+
+  # ============================================================================
+  # Flower (Celery Monitoring)
+  # ============================================================================
+  flower:
+    build:
+      context: ./backend
+      dockerfile: ../docker/worker.Dockerfile
+    container_name: ai-eval-flower
+    restart: unless-stopped
+    ports:
+      - "5555:5555"
+    environment:
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - ai-eval-network
+    command: celery -A app.workers.celery_app flower --port=5555
+
+  # ============================================================================
+  # React Frontend
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend.Dockerfile
+      target: development
+    container_name: ai-eval-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY}
+      VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN}
+      VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - ai-eval-network
+    command: npm run dev -- --host
+
+  # ============================================================================
+  # Nginx Reverse Proxy (Production)
+  # ============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: ai-eval-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - ai-eval-network
+    profiles:
+      - production
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  ai-eval-network:
+    driver: bridge
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  uploads:
+    driver: local
