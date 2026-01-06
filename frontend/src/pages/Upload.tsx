@@ -2,7 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { FiUploadCloud, FiFile, FiX, FiCheck, FiArrowLeft } from 'react-icons/fi';
-import { mockSubjects, uploadAssignment } from '@/services/mockApi';
+import { mockSubjects } from '@/services/mockApi';
+import { DocumentService } from '@/services/api';
 import { validateFile } from '@/utils/helpers';
 import Alert from '@/components/common/Alert';
 import Loader from '@/components/common/Loader';
@@ -60,6 +61,7 @@ const Upload: React.FC = () => {
     }
 
     setUploading(true);
+    setProgress(0);
 
     // Simulate upload progress
     const progressInterval = setInterval(() => {
@@ -73,15 +75,26 @@ const Upload: React.FC = () => {
     }, 200);
 
     try {
-      await uploadAssignment(file, subject, parseInt(maxMarks));
-      setProgress(100);
-      setSuccess(true);
+      // Call the real backend API
+      const response = await DocumentService.uploadDocument(file);
       
-      setTimeout(() => {
-        navigate('/results');
-      }, 2000);
-    } catch (err) {
-      setError('Upload failed. Please try again.');
+      if (response.status === 'success') {
+        setProgress(100);
+        setSuccess(true);
+        
+        // Store the response for later use
+        sessionStorage.setItem('uploadedDocument', JSON.stringify(response));
+        
+        setTimeout(() => {
+          navigate('/results');
+        }, 2000);
+      } else {
+        setError('Upload failed. Please try again.');
+        setProgress(0);
+      }
+    } catch (err: any) {
+      const errorMessage = err.message || err.response?.data?.detail || 'Upload failed. Please try again.';
+      setError(errorMessage);
       setProgress(0);
     } finally {
       clearInterval(progressInterval);

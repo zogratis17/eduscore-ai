@@ -8,14 +8,16 @@ class DocumentParser:
     def extract_text_from_pdf(file_bytes: bytes) -> Dict[str, Any]:
         """
         Extracts text from PDF bytes using PyMuPDF.
-        
         """
         try:
             # Open the PDF from bytes
             doc = fitz.open(stream=file_bytes, filetype="pdf")
             
             if doc.is_encrypted:
-                return {"error": "The PDF is encrypted and cannot be processed."}
+                return {
+                    "status": "error",
+                    "message": "The PDF is encrypted and cannot be processed."
+                }
             
             full_text = ""
             
@@ -33,13 +35,17 @@ class DocumentParser:
             }
         
         except Exception as e:
-            return {"error":"error","message": f"An error occurred while processing the PDF: {str(e)}"}
+            return {
+                "status": "error",
+                "message": f"An error occurred while processing the PDF: {str(e)}"
+            }
         
     @staticmethod
     def extract_text_from_docx(file_bytes: bytes) -> Dict[str, Any]:
-        
+        """
+        Extracts text from DOCX bytes using python-docx.
+        """
         try:
-            
             doc_file = io.BytesIO(file_bytes)
             doc = docx.Document(doc_file)
             
@@ -52,7 +58,7 @@ class DocumentParser:
             
             return {
                 "status": "success",
-                "text": final_text.strip(),
+                "text": final_text,
                 "metadata": {
                     "paragraph_count": len(doc.paragraphs),
                     "author": doc.core_properties.author or "unknown"
@@ -60,12 +66,9 @@ class DocumentParser:
             }
             
         except Exception as e:
-            return {"error":"error","message": f"An error occurred while processing the DOCX: {str(e)}"}
-       
-        
-        
-            
-        
-        pass
+            return {
+                "status": "error",
+                "message": f"An error occurred while processing the DOCX: {str(e)}"
+            }
     
         
