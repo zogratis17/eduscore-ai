@@ -184,7 +184,7 @@ const Profile: React.FC = () => {
 
         <div className="space-y-4">
           {/* Email Notifications */}
-          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+          {/* <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
             <div>
               <p className="font-medium text-foreground">Email Notifications</p>
               <p className="text-sm text-muted-foreground">Receive email updates about your evaluations</p>
@@ -201,10 +201,10 @@ const Profile: React.FC = () => {
                 }`}
               />
             </button>
-          </div>
+          </div> */}
 
           {/* Push Notifications */}
-          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+         {/*  <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
             <div>
               <p className="font-medium text-foreground">Push Notifications</p>
               <p className="text-sm text-muted-foreground">Get real-time alerts on your device</p>
@@ -221,7 +221,7 @@ const Profile: React.FC = () => {
                 }`}
               />
             </button>
-          </div>
+          </div> */}
 
           {/* Language */}
           <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">

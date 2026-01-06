@@ -62,7 +62,7 @@ const Register: React.FC = () => {
           </p>
           <div className="mt-12 flex items-center justify-center gap-8">
             <div className="flex -space-x-3">
-              {[1, 2, 3, 4].map((i) => (
+              {[9, 0, 18, 7].map((i) => (
                 <div
                   key={i}
                   className="w-10 h-10 rounded-full bg-primary-foreground/20 border-2 border-primary flex items-center justify-center text-xs font-medium text-primary-foreground"
@@ -70,10 +70,10 @@ const Register: React.FC = () => {
                   {String.fromCharCode(65 + i)}
                 </div>
               ))}
-            </div>
+            </div>{/* 
             <p className="text-sm text-primary-foreground/80">
               Join 5,000+ students and teachers
-            </p>
+            </p> */}
           </div>
         </div>
       </div>
@@ -106,7 +106,7 @@ const Register: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">I am a</label>
               <div className="flex gap-2">
-                {(['student', 'teacher', 'admin'] as UserRole[]).map((r) => (
+                {(['student', 'teacher'] as UserRole[]).map((r) => (
                   <button
                     key={r}
                     type="button"

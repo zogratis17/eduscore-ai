@@ -143,7 +143,7 @@ const Login: React.FC = () => {
           </p>
 
           {/* Demo credentials */}
-          <div className="mt-8 p-4 rounded-lg bg-muted/50 border border-border">
+         {/*  <div className="mt-8 p-4 rounded-lg bg-muted/50 border border-border">
             <p className="text-xs font-medium text-muted-foreground mb-2">Demo Credentials</p>
             <div className="space-y-1 text-xs text-muted-foreground">
               <p>Student: student@eduscore.ai</p>
@@ -151,7 +151,7 @@ const Login: React.FC = () => {
               <p>Admin: admin@eduscore.ai</p>
               <p className="text-muted-foreground/60">Password: any</p>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -168,7 +168,7 @@ const Login: React.FC = () => {
             Get instant, unbiased grading powered by advanced AI. Upload assignments and receive detailed feedback in seconds.
           </p>
           <div className="mt-12 grid grid-cols-3 gap-6">
-            <div className="text-center">
+            {/* <div className="text-center">
               <p className="text-3xl font-bold text-primary-foreground">50K+</p>
               <p className="text-sm text-primary-foreground/60">Assignments Graded</p>
             </div>
@@ -179,7 +179,7 @@ const Login: React.FC = () => {
             <div className="text-center">
               <p className="text-3xl font-bold text-primary-foreground">5K+</p>
               <p className="text-sm text-primary-foreground/60">Active Users</p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
