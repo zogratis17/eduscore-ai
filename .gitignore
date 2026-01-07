@@ -115,3 +115,6 @@ temp/
 # Alembic
 alembic/versions/*.py
 !alembic/versions/.gitkeep
+
+# Project context and documentation
+GEMINI.md

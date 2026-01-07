@@ -1,0 +1,30 @@
+# --- Core API Framework ---
+fastapi[all]~=0.109.0
+uvicorn[standard]~=0.27.0
+
+# --- Validation & Settings ---
+pydantic~=2.6.0
+pydantic-settings~=2.1.0
+
+# --- Database (Async) ---
+motor~=3.3.0
+bson~=0.5.10
+
+# --- Authentication ---
+python-jose[cryptography]~=3.3.0
+passlib[bcrypt]~=1.7.4
+python-multipart~=0.0.7  # CRITICAL: Needed for File Uploads
+
+# --- Document Processing (New) ---
+pymupdf~=1.23.8          # Fastest PDF text extractor (FR-2.3)
+python-docx~=1.1.0       # For .docx files (FR-2.3)
+python-magic~=0.4.27     # Securely detects file types (prevents fake extensions)
+aiofiles~=23.2.1         # For saving uploaded files asynchronously
+
+# --- Background Tasks ---
+celery[redis]~=5.3.6
+redis~=5.0.1
+
+# --- Utilities ---
+httpx~=0.26.0
+email-validator~=2.1.0
