@@ -1,133 +1,127 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
+  User as FirebaseUser,
+  updateProfile,
+} from 'firebase/auth';
+import { auth } from '@/lib/firebase'; // Ensure this path is correct
+
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export type UserRole = 'student' | 'teacher' | 'admin';
 
+// Updated User interface to better match Firebase and backend data
 export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  avatar?: string;
+  uid: string;
+  name: string | null;
+  email: string | null;
+  role: UserRole; // Role can be managed in your backend and added to the token or fetched separately
+  avatar?: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, role: UserRole) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for simulation
-const mockUsers: Record<string, User> = {
-  'student@eduscore.ai': {
-    id: '1',
-    name: 'Alex Johnson',
-    email: 'student@eduscore.ai',
-    role: 'student',
-  },
-  'teacher@eduscore.ai': {
-    id: '2',
-    name: 'Dr. Sarah Williams',
-    email: 'teacher@eduscore.ai',
-    role: 'teacher',
-  },
-  'admin@eduscore.ai': {
-    id: '3',
-    name: 'Admin User',
-    email: 'admin@eduscore.ai',
-    role: 'admin',
-  },
-};
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session on mount
-    const storedUser = localStorage.getItem('eduscore_user');
-    const token = localStorage.getItem('eduscore_token');
-    const expiry = localStorage.getItem('eduscore_token_expiry');
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Here you could fetch role from your backend if not in token
+        // For simplicity, we'll assign a default role or retrieve it
+        const userRole: UserRole = (await firebaseUser.getIdTokenResult())?.claims?.role || 'student';
 
-    if (storedUser && token && expiry) {
-      const expiryTime = parseInt(expiry, 10);
-      if (Date.now() < expiryTime) {
-        setUser(JSON.parse(storedUser));
+        setUser({
+          uid: firebaseUser.uid,
+          name: firebaseUser.displayName,
+          email: firebaseUser.email,
+          role: userRole,
+          avatar: firebaseUser.photoURL,
+        });
       } else {
-        // Token expired, clear storage
-        localStorage.removeItem('eduscore_user');
-        localStorage.removeItem('eduscore_token');
-        localStorage.removeItem('eduscore_token_expiry');
+        setUser(null);
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock authentication - in real app, this would be an API call
-    const mockUser = mockUsers[email] || {
-      id: Math.random().toString(36).substr(2, 9),
-      name: email.split('@')[0],
-      email,
-      role,
-    };
-
-    // Set user with requested role
-    const authenticatedUser = { ...mockUser, role };
-    
-    // Store in localStorage (simulating JWT)
-    const mockToken = `mock_jwt_${Date.now()}`;
-    const expiryTime = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
-    
-    localStorage.setItem('eduscore_user', JSON.stringify(authenticatedUser));
-    localStorage.setItem('eduscore_token', mockToken);
-    localStorage.setItem('eduscore_token_expiry', expiryTime.toString());
-    
-    setUser(authenticatedUser);
-    setIsLoading(false);
-    return true;
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged will handle setting the user
+      return true;
+    } catch (error) {
+      console.error("Login failed:", error);
+      setIsLoading(false);
+      return false;
+    }
   };
 
   const register = async (name: string, email: string, password: string, role: UserRole): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      email,
-      role,
-    };
-    
-    // Store in localStorage
-    const mockToken = `mock_jwt_${Date.now()}`;
-    const expiryTime = Date.now() + 24 * 60 * 60 * 1000;
-    
-    localStorage.setItem('eduscore_user', JSON.stringify(newUser));
-    localStorage.setItem('eduscore_token', mockToken);
-    localStorage.setItem('eduscore_token_expiry', expiryTime.toString());
-    
-    setUser(newUser);
-    setIsLoading(false);
-    return true;
+    try {
+      // 1. Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      // 2. Update Firebase profile with the name
+      await updateProfile(firebaseUser, { displayName: name });
+
+      // 3. Get Firebase ID token
+      const token = await firebaseUser.getIdToken();
+
+      // 4. Send token to your backend to create user in MongoDB
+      const response = await fetch(`${API_URL}/users/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        // Backend's verify_firebase_token will extract all necessary user info from the token.
+        // You can pass additional info like 'role' if needed, but the backend should control this.
+        body: JSON.stringify({ role: role }) 
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Backend registration failed');
+      }
+
+      // onAuthStateChanged will handle setting the local user state
+      console.log('User registered successfully and data stored in backend.');
+      return true;
+    } catch (error) {
+      console.error("Registration failed:", error);
+      setIsLoading(false);
+      // TODO: Maybe delete the Firebase user if backend registration fails
+      return false;
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem('eduscore_user');
-    localStorage.removeItem('eduscore_token');
-    localStorage.removeItem('eduscore_token_expiry');
-    setUser(null);
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      // onAuthStateChanged will set user to null
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   return (
