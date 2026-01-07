@@ -5,12 +5,13 @@ import { getAuth } from "firebase/auth";
 // TODO: Add your own Firebase configuration from your project settings
 // See: https://firebase.google.com/docs/web/setup#available-libraries
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAwffTTlfJmKFP_Gc1MKMHOroh5ibQMQsU",
+  authDomain: "eduscoreai.firebaseapp.com",
+  projectId: "eduscoreai",
+  storageBucket: "eduscoreai.firebasestorage.app",
+  messagingSenderId: "1018692794556",
+  appId: "1:1018692794556:web:3fd68429a2326391a8b8b9",
+  measurementId: "G-HWCMSPHVRL"
 };
 
 // Initialize Firebase
