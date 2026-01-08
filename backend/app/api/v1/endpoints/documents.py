@@ -8,6 +8,7 @@ from app.models.document import Document
 from app.schemas.document import DocumentResponse
 from app.services.storage_service import storage_service
 from app.api.deps import get_current_user
+from app.workers.tasks.document_tasks import process_uploaded_document
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ ALLOWED_MIME_TYPES = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
     "text/plain": "txt"
 }
+MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB
 
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
@@ -43,9 +45,16 @@ async def upload_document(
     # 3. Create Database Record
     file_type = ALLOWED_MIME_TYPES[file.content_type]
     
-    # Get file size safely
+    # Get file size safely and validate
     try:
         file_size = os.path.getsize(storage_path)
+        if file_size > MAX_FILE_SIZE:
+            # Cleanup
+            storage_service.delete_file(storage_path)
+            raise HTTPException(
+                status_code=400,
+                detail=f"File size exceeds maximum limit of 25MB."
+            )
     except OSError:
         file_size = 0
 
@@ -66,6 +75,9 @@ async def upload_document(
     new_doc = await db["documents"].insert_one(
         doc_in.model_dump(by_alias=True, exclude={"id"})
     )
+    
+    # Trigger Background Processing
+    process_uploaded_document.delay(str(new_doc.inserted_id))
     
     # Retrieve the created document to return it
     created_doc = await db["documents"].find_one({"_id": new_doc.inserted_id})
