@@ -7,6 +7,7 @@ import os
 
 from app.core.config import settings
 from app.services.document_parser import document_parser
+from app.ai.plagiarism_detector import plagiarism_detector
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,11 @@ def process_uploaded_document(document_id: str):
         # Actual parsing logic
         parsed_data = document_parser.parse_file(file_path)
         
-        # 4. Update document with results
+        # 4. Add to Plagiarism Corpus
+        if parsed_data.get("extracted_text"):
+            plagiarism_detector.add_document(document_id, parsed_data["extracted_text"])
+        
+        # 5. Update document with results
         update_data = {
             "extracted_text": parsed_data["extracted_text"],
             "word_count": parsed_data["word_count"],
