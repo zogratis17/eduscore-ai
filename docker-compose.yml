@@ -133,7 +133,7 @@ services:
       MODELS_PATH: /app/models
       
       # CORS
-      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+      BACKEND_CORS_ORIGINS: '["http://localhost:5173", "http://localhost:3000"]'
     volumes:
       - ./backend:/app
       - ./ai-models:/app/models
@@ -244,7 +244,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://localhost:8000
+      VITE_API_URL: http://localhost:8000/api/v1
       VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY}
       VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN}
       VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID}

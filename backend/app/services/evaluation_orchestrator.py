@@ -79,9 +79,12 @@ class EvaluationOrchestrator:
                 "grammar": grammar_result,
                 "plagiarism": plagiarism_result,
                 "vocabulary": vocab_result,
-                "coherence": coherence_result
+                "coherence": coherence_result,
+                # Placeholders for frontend compatibility until implemented
+                "topic_relevance": {"score": 0, "similarity": 0},
+                "ai_detection": {"score": 0, "perplexity": 0}
             },
-            "feedback": self._generate_feedback(
+            "overall_feedback": self._generate_feedback(
                 grammar_result, 
                 plagiarism_result, 
                 vocab_result, 

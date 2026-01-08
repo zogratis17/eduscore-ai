@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
+from app.models.common import PyObjectId
 
 # Base properties shared across schemas
 class DocumentBase(BaseModel):
@@ -10,9 +11,10 @@ class DocumentBase(BaseModel):
 
 # Properties to return via API (The "Menu")
 class DocumentResponse(DocumentBase):
-    id: str = Field(alias="_id")  # Shows as 'id' to user, maps from '_id'
+    id: PyObjectId = Field(alias="_id")  # Shows as 'id' to user, maps from '_id'
     uploaded_by: str
     status: str
+    final_score: Optional[float] = None
     file_size_bytes: int
     word_count: Optional[int] = 0
     page_count: Optional[int] = None
@@ -24,3 +26,4 @@ class DocumentResponse(DocumentBase):
     class Config:
         populate_by_name = True
         from_attributes = True
+        arbitrary_types_allowed = True
