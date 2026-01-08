@@ -115,3 +115,8 @@ temp/
 # Alembic
 alembic/versions/*.py
 !alembic/versions/.gitkeep
+
+# ignore local docs
+GEMINI.md
+PRD.md
+
