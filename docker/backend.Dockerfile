@@ -12,12 +12,17 @@ WORKDIR /app
 
 # 4. Install system dependencies
 # gcc/python3-dev: Needed to compile some AI libraries if wheels aren't available
-# libpq-dev: Often needed for DB drivers (if we used Postgres, but good to have)
 # curl: For healthchecks
+# libmagic1: Required for python-magic
+# poppler-utils: For PDF processing
+# tesseract-ocr: For OCR (FR-2.3)
 RUN apt-get update && apt-get install -y \
     gcc \
     python3-dev \
     curl \
+    libmagic1 \
+    poppler-utils \
+    tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 # 5. Install Python dependencies

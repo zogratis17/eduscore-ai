@@ -29,7 +29,7 @@ def evaluate_document_task(document_id: str):
     
     # Synchronous MongoDB connection for Celery
     client = MongoClient(settings.MONGODB_URL)
-    db = client[settings.MONGODB_DB_NAME]
+    db = client[settings.MONGODB_DATABASE]
     doc_collection = db["documents"]
     eval_collection = db["evaluations"]
     
@@ -67,7 +67,7 @@ def evaluate_document_task(document_id: str):
             final_score=results["final_score"],
             grade=results["grade"],
             components=results["components"],
-            feedback=results["feedback"]
+            overall_feedback=results["overall_feedback"]
         )
         
         # Upsert evaluation (replace if exists)

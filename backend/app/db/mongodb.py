@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 class MongoClientManager:
     client: AsyncIOMotorClient = None
-    db_name: str = settings.MONGODB_DB_NAME
+    db_name: str = settings.MONGODB_DATABASE
 
 db_manager = MongoClientManager()
 

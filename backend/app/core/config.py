@@ -18,14 +18,14 @@ class Settings(BaseSettings):
         raise ValueError(v)
     
     MONGODB_URL: str = "mongodb://localhost:27017"
-    MONGODB_DB_NAME: str = "eduscore_ai"
+    MONGODB_DATABASE: str = "eduscore_ai"
     UPLOAD_DIR: str = "uploads"
     
     # MinIO / S3
     MINIO_ENDPOINT: str = "localhost:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
-    MINIO_BUCKET_NAME: str = "eduscore-documents"
+    MINIO_BUCKET: str = "eduscore-documents"
     MINIO_SECURE: bool = False
 
     REDIS_URL: str = "redis://localhost:6379/0"

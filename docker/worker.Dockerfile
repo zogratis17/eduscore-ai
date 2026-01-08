@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y \
     gcc \
     python3-dev \
     curl \
+    libmagic1 \
+    poppler-utils \
+    tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 # 5. Install Python dependencies

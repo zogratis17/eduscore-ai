@@ -8,6 +8,9 @@ import os
 from app.core.config import settings
 from app.services.document_parser import document_parser
 from app.ai.plagiarism_detector import plagiarism_detector
+# Avoid circular imports by importing inside function or if we are sure no cycle exists
+# Importing here for now
+from app.workers.tasks.evaluation_tasks import evaluate_document_task
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +23,7 @@ def process_uploaded_document(document_id: str):
     
     # Connect to MongoDB (Synchronous)
     client = MongoClient(settings.MONGODB_URL)
-    db = client[settings.MONGODB_DB_NAME]
+    db = client[settings.MONGODB_DATABASE]
     collection = db["documents"]
     
     try:
@@ -62,6 +65,9 @@ def process_uploaded_document(document_id: str):
             {"$set": update_data}
         )
         logger.info(f"Document {document_id} processed successfully.")
+        
+        # 6. Trigger Evaluation Task
+        evaluate_document_task.delay(document_id)
 
     except Exception as e:
         logger.error(f"Error processing document {document_id}: {str(e)}")
