@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -9,11 +9,9 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Menu,
   GraduationCap
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import Button from '../common/Button';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const location = useLocation();

@@ -1,6 +1,5 @@
 import React from 'react';
-import { Bell, Search, User } from 'lucide-react';
-import Button from '../common/Button';
+import { Bell, Search } from 'lucide-react';
 
 const Header = () => {
   return (

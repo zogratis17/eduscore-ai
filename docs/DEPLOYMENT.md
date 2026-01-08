@@ -291,7 +291,9 @@ exit
 
 docker exec -it ai-eval-minio mc alias set myminio http://localhost:9000 minioadmin your_password
 docker exec -it ai-eval-minio mc mb myminio/documents
-docker exec -it ai-eval-minio mc anonymous set download myminio/documents
+# Note: Do NOT set anonymous download access for production environments
+# The bucket should only be accessible to authenticated users
+# docker exec -it ai-eval-minio mc anonymous set download myminio/documents
 ```
 
 ---

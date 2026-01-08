@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { UploadCloud, File, X, AlertCircle, CheckCircle2, FileText, Loader2 } from 'lucide-react';
+import { UploadCloud, File, X, AlertCircle, CheckCircle2, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/common/Card';
 import Button from '../components/common/Button';
 
