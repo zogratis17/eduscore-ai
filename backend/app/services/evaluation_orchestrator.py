@@ -2,6 +2,8 @@ import logging
 from typing import Dict, Any
 from app.ai.grammar_analyzer import grammar_analyzer
 from app.ai.plagiarism_detector import plagiarism_detector
+from app.ai.vocabulary_analyzer import vocabulary_analyzer
+from app.ai.coherence_scorer import coherence_scorer
 
 logger = logging.getLogger(__name__)
 
@@ -26,32 +28,43 @@ class EvaluationOrchestrator:
         
         # 2. Plagiarism Detection
         logger.info("Running Plagiarism Detection...")
-        # Note: In a real scenario, we should ensure the corpus is loaded.
-        # For this MVP, we rely on the corpus being built/loaded separately 
-        # or incrementally.
         plagiarism_result = plagiarism_detector.check_plagiarism(text, exclude_doc_id=document_id)
         
-        # 3. Aggregation
-        # Phase 1 MVP Weights (Normalized for available components)
-        # Grammar: 80%, Plagiarism Penalty: 20%
+        # 3. Vocabulary Analysis
+        logger.info("Running Vocabulary Analysis...")
+        vocab_result = vocabulary_analyzer.analyze(text)
+        
+        # 4. Coherence Analysis
+        logger.info("Running Coherence Analysis...")
+        coherence_result = coherence_scorer.analyze(text)
+        
+        # 5. Aggregation
+        # Weights:
+        # Grammar: 40%
+        # Vocabulary: 25%
+        # Coherence: 25%
+        # Plagiarism: Penalty only
         
         grammar_score = grammar_result["score"]
-        plagiarism_penalty = plagiarism_result["percentage"]
+        vocab_score = vocab_result["score"]
+        coherence_score = coherence_result["score"]
+        plagiarism_pct = plagiarism_result["percentage"]
         
-        # Formula: (Grammar * 0.8) - (Plagiarism * 0.5) 
-        # Adjusted to be robust:
-        # Base score comes from grammar. Plagiarism acts as a heavy penalty.
+        # Base Score
+        weighted_score = (
+            (grammar_score * 0.40) +
+            (vocab_score * 0.30) +
+            (coherence_score * 0.30)
+        )
         
-        final_score = (grammar_score * 1.0) 
+        final_score = weighted_score
         
         # Apply penalties
-        if plagiarism_penalty > 0:
-            # 1% plagiarism = 1 point deduction? Or stricter?
-            # PRD suggests severe penalty if > 30%
-            deduction = plagiarism_penalty * 0.5
+        if plagiarism_pct > 0:
+            deduction = plagiarism_pct * 0.5
             final_score -= deduction
             
-        if plagiarism_penalty > 30:
+        if plagiarism_pct > 30:
              final_score *= 0.5 # Severe penalty per PRD
 
         final_score = max(0.0, min(100.0, final_score))
@@ -65,9 +78,15 @@ class EvaluationOrchestrator:
             "components": {
                 "grammar": grammar_result,
                 "plagiarism": plagiarism_result,
-                # "vocabulary": ...
+                "vocabulary": vocab_result,
+                "coherence": coherence_result
             },
-            "feedback": self._generate_feedback(grammar_result, plagiarism_result)
+            "feedback": self._generate_feedback(
+                grammar_result, 
+                plagiarism_result, 
+                vocab_result, 
+                coherence_result
+            )
         }
 
     def _assign_grade(self, score: float) -> str:
@@ -82,32 +101,33 @@ class EvaluationOrchestrator:
         elif score >= 50: return "C-"
         else: return "F"
 
-    def _generate_feedback(self, grammar_result: Dict, plagiarism_result: Dict) -> str:
+    def _generate_feedback(self, grammar: Dict, plagiarism: Dict, vocab: Dict, coherence: Dict) -> str:
         """
         Generates simple feedback based on analysis.
         """
-        score = grammar_result["score"]
-        error_count = grammar_result["error_count"]
-        plagiarism_pct = plagiarism_result["percentage"]
-        
         feedback = []
         
-        # Grammar Feedback
-        if score > 90:
-            feedback.append("Excellent work! Your writing is grammatically sound.")
-        elif score > 75:
-            feedback.append("Good job. There are a few grammar issues to address.")
-        else:
-            feedback.append("Needs improvement. Please review the grammar errors carefully.")
+        # Grammar
+        if grammar["score"] > 85:
+            feedback.append("Excellent grammar.")
+        elif grammar["score"] < 60:
+            feedback.append("Needs significant grammar review.")
             
-        if error_count > 0:
-            feedback.append(f"Found {error_count} potential grammar or style issues.")
+        # Vocabulary
+        if vocab["score"] > 80:
+            feedback.append("Strong use of vocabulary.")
+        elif vocab["score"] < 50:
+            feedback.append("Try to use more varied and academic language.")
             
-        # Plagiarism Feedback
-        if plagiarism_pct > 30:
-             feedback.append(f"WARNING: High plagiarism detected ({plagiarism_pct}%). Please review academic integrity guidelines.")
-        elif plagiarism_pct > 0:
-             feedback.append(f"Note: Some content matches existing sources ({plagiarism_pct}%). Ensure proper citation.")
+        # Coherence
+        if coherence["score"] > 80:
+            feedback.append("Well-structured and easy to follow.")
+        elif coherence["score"] < 50:
+            feedback.append("Consider improving paragraph transitions and structure.")
+
+        # Plagiarism
+        if plagiarism["percentage"] > 10:
+             feedback.append(f"WARNING: Plagiarism detected ({plagiarism['percentage']}%).")
              
         return " ".join(feedback)
 
