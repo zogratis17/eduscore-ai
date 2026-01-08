@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { GraduationCap, Mail, Lock, ArrowRight } from 'lucide-react';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/common/Card';
+import { Card, CardContent, CardFooter } from '../components/common/Card';
 
 const LoginPage = () => {
   const navigate = useNavigate();

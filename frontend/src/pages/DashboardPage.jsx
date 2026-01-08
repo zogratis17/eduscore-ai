@@ -3,8 +3,7 @@ import {
   FileText, 
   CheckCircle, 
   Clock, 
-  TrendingUp, 
-  MoreVertical,
+  TrendingUp,
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';

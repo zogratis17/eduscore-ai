@@ -1,17 +1,17 @@
 import React from 'react';
-import { Search, Filter, MoreHorizontal, FileText, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, FileText } from 'lucide-react';
 import { Card, CardContent } from '../components/common/Card';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 
 const ResultsPage = () => {
   const documents = [
-    { id: 1, name: 'History_Essay_Final.pdf', student: 'Alice Johnson', date: 'Oct 24, 2025', score: 88, status: 'completed', grade: 'A' },
-    { id: 2, name: 'Physics_Lab_Report_3.docx', student: 'Bob Smith', date: 'Oct 24, 2025', score: 72, status: 'completed', grade: 'B' },
-    { id: 3, name: 'Literature_Review_Draft.pdf', student: 'Charlie Brown', date: 'Oct 23, 2025', score: 0, status: 'processing', grade: '-' },
-    { id: 4, name: 'Economics_101_Midterm.pdf', student: 'Diana Prince', date: 'Oct 23, 2025', score: 94, status: 'completed', grade: 'A+' },
-    { id: 5, name: 'Chemistry_Research.docx', student: 'Evan Wright', date: 'Oct 22, 2025', score: 45, status: 'flagged', grade: 'F' },
-    { id: 6, name: 'Biology_Assignment.pdf', student: 'Fiona Gallagher', date: 'Oct 22, 2025', score: 81, status: 'completed', grade: 'A-' },
+    { id: 1, name: 'History_Essay_Final.pdf', student: 'Alice Johnson', date: 'Jan 7, 2026', score: 88, status: 'completed', grade: 'A' },
+    { id: 2, name: 'Physics_Lab_Report_3.docx', student: 'Bob Smith', date: 'Jan 7, 2026', score: 72, status: 'completed', grade: 'B' },
+    { id: 3, name: 'Literature_Review_Draft.pdf', student: 'Charlie Brown', date: 'Jan 6, 2026', score: 0, status: 'processing', grade: '-' },
+    { id: 4, name: 'Economics_101_Midterm.pdf', student: 'Diana Prince', date: 'Jan 6, 2026', score: 94, status: 'completed', grade: 'A+' },
+    { id: 5, name: 'Chemistry_Research.docx', student: 'Evan Wright', date: 'Jan 5, 2026', score: 45, status: 'flagged', grade: 'F' },
+    { id: 6, name: 'Biology_Assignment.pdf', student: 'Fiona Gallagher', date: 'Jan 5, 2026', score: 81, status: 'completed', grade: 'A-' },
   ];
 
   const getStatusColor = (status) => {
