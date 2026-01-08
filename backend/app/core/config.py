@@ -21,6 +21,18 @@ class Settings(BaseSettings):
     MONGODB_DB_NAME: str = "eduscore_ai"
     UPLOAD_DIR: str = "uploads"
     
+    # MinIO / S3
+    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_BUCKET_NAME: str = "eduscore-documents"
+    MINIO_SECURE: bool = False
+
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    # AI Services
+    LANGUAGETOOL_URL: str = "http://localhost:8010"
+    
     model_config = SettingsConfigDict(
         case_sensitive=True,
         env_file="backend/.env",

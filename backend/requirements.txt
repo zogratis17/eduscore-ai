@@ -28,3 +28,5 @@ redis~=5.0.1
 # --- Utilities ---
 httpx~=0.26.0
 email-validator~=2.1.0
+minio~=7.2.0
+python-slugify~=8.0.1
