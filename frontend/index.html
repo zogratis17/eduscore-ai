@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Evaluation Engine</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📄 Document Evaluation Engine</h1>
+            <p>Upload your document for comprehensive analysis</p>
+        </header>
+
+        <!-- Upload Section -->
+        <div class="section" id="uploadSection">
+            <h2>Upload Document</h2>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <p>Drag & drop your document here</p>
+                <p class="upload-subtitle">or</p>
+                <label for="fileInput" class="btn btn-primary">Choose File</label>
+                <input type="file" id="fileInput" accept=".pdf,.docx" style="display: none;">
+                <p class="file-info">Supported formats: PDF, DOCX (Max 10MB)</p>
+            </div>
+            <div id="uploadProgress" class="progress-bar" style="display: none;">
+                <div class="progress-fill" id="progressFill"></div>
+                <span class="progress-text" id="progressText">Uploading...</span>
+            </div>
+            <div id="uploadStatus" class="status-message"></div>
+        </div>
+
+        <!-- Evaluation Section -->
+        <div class="section" id="evaluationSection" style="display: none;">
+            <h2>Evaluate Document</h2>
+            <div class="document-info" id="documentInfo"></div>
+            <div class="prompt-section">
+                <label for="promptText">Assignment Prompt (Optional):</label>
+                <textarea id="promptText" rows="4" placeholder="Enter the assignment prompt to check topic relevance..."></textarea>
+            </div>
+            <button class="btn btn-primary" id="evaluateBtn">Run Evaluation</button>
+            <div id="evaluationStatus" class="status-message"></div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="section" id="resultsSection" style="display: none;">
+            <h2>Evaluation Results</h2>
+            
+            <!-- Overall Score -->
+            <div class="results-header">
+                <div class="score-card">
+                    <div class="score-label">Overall Score</div>
+                    <div class="score-value" id="overallScore">--</div>
+                    <div class="score-grade" id="letterGrade">-</div>
+                </div>
+            </div>
+
+            <!-- Component Scores -->
+            <div class="components-grid">
+                <div class="component-card">
+                    <h3>📝 Grammar & Language</h3>
+                    <div class="component-score" id="grammarScore">--</div>
+                    <div class="component-details" id="grammarDetails"></div>
+                </div>
+                <div class="component-card">
+                    <h3>📚 Vocabulary Quality</h3>
+                    <div class="component-score" id="vocabularyScore">--</div>
+                    <div class="component-details" id="vocabularyDetails"></div>
+                </div>
+                <div class="component-card">
+                    <h3>🎯 Topic Relevance</h3>
+                    <div class="component-score" id="topicScore">--</div>
+                    <div class="component-details" id="topicDetails"></div>
+                </div>
+                <div class="component-card">
+                    <h3>🔗 Coherence & Structure</h3>
+                    <div class="component-score" id="coherenceScore">--</div>
+                    <div class="component-details" id="coherenceDetails"></div>
+                </div>
+                <div class="component-card">
+                    <h3>🔍 Plagiarism Detection</h3>
+                    <div class="component-score" id="plagiarismScore">--</div>
+                    <div class="component-details" id="plagiarismDetails"></div>
+                </div>
+            </div>
+
+            <!-- Grammar Errors -->
+            <div class="errors-section" id="errorsSection" style="display: none;">
+                <h3>Grammar Errors & Suggestions</h3>
+                <div id="errorsList"></div>
+            </div>
+
+            <!-- Feedback -->
+            <div class="feedback-section">
+                <h3>Feedback & Recommendations</h3>
+                <div id="feedbackText" class="feedback-content"></div>
+            </div>
+
+            <!-- Actions -->
+            <div class="actions">
+                <button class="btn btn-primary" id="exportBtn">📥 Download PDF Report</button>
+                <button class="btn btn-secondary" id="newDocBtn">📤 Upload New Document</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
