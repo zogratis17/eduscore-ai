@@ -1,4 +1,4 @@
-# Document Evaluation Engine
+# Document Evaluation Engine (EduScore)
 
 A comprehensive document evaluation system that analyzes uploaded documents (PDF/DOCX) for grammar, vocabulary, coherence, topic relevance, and plagiarism.
 
