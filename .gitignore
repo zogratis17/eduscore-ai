@@ -124,3 +124,5 @@ logs/
 *.log
 
 # Project context and documentation
+backend/firebase-credentials.json
+*.json
