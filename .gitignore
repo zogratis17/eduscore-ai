@@ -119,5 +119,8 @@ alembic/versions/*.py
 #MINIO
 minio
 /minio
+#logs
+logs/
+*.log
 
 # Project context and documentation
