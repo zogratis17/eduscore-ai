@@ -2,8 +2,12 @@ import os
 import logging
 import re
 import unicodedata
+import subprocess
 from typing import Dict, Any, Optional
-import fitz  # PyMuPDF
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    fitz = None
 import docx
 try:
     import magic
@@ -20,16 +24,6 @@ class DocumentParser:
     def parse_file(self, file_path: str) -> Dict[str, Any]:
         """
         Parses a file from the given path and extracts text and metadata.
-        
-        Args:
-            file_path: The absolute path to the file.
-            
-        Returns:
-            Dict containing:
-            - extracted_text (str)
-            - word_count (int)
-            - page_count (int, optional)
-            - metadata (dict)
         """
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -92,9 +86,6 @@ class DocumentParser:
         # Remove excessive whitespace within lines, but preserve newlines
         lines = [re.sub(r'\s+', ' ', line).strip() for line in text.split('\n')]
         
-        # Remove empty lines (optional, but good for analysis)
-        # lines = [line for line in lines if line] 
-        
         cleaned_text = "\n".join(lines)
         
         # Remove multiple newlines (e.g. more than 2)
@@ -103,22 +94,45 @@ class DocumentParser:
         return cleaned_text.strip()
 
     def _parse_pdf(self, file_path: str) -> Dict[str, Any]:
-        text_content = []
-        page_count = 0
-        
-        with fitz.open(file_path) as doc:
-            page_count = len(doc)
-            for page in doc:
-                text_content.append(page.get_text())
-        
-        full_text = "\n".join(text_content)
+        if fitz:
+             # Use PyMuPDF if available
+            text_content = []
+            page_count = 0
+            with fitz.open(file_path) as doc:
+                page_count = len(doc)
+                for page in doc:
+                    text_content.append(page.get_text())
+            full_text = "\n".join(text_content)
+            source = "pdf (pymupdf)"
+        else:
+            # Fallback to pdftotext (poppler-utils)
+            logger.info("PyMuPDF not found. Falling back to pdftotext.")
+            try:
+                result = subprocess.run(
+                    ["pdftotext", file_path, "-"], 
+                    capture_output=True, 
+                    text=True, 
+                    check=True
+                )
+                full_text = result.stdout
+                page_count = 1 # pdftotext doesn't give page count easily
+                source = "pdf (pdftotext)"
+            except Exception as e:
+                logger.error(f"pdftotext failed: {e}")
+                return {
+                    "extracted_text": "[PDF Parsing Failed]",
+                    "word_count": 0,
+                    "page_count": 0,
+                    "metadata": {"source": "pdf", "error": "parsing_failed"}
+                }
+
         cleaned_text = self._clean_text(full_text)
         
         return {
             "extracted_text": cleaned_text,
             "word_count": self._count_words(cleaned_text),
             "page_count": page_count,
-            "metadata": {"source": "pdf"}
+            "metadata": {"source": source}
         }
 
     def _parse_docx(self, file_path: str) -> Dict[str, Any]:
@@ -130,8 +144,6 @@ class DocumentParser:
             
         full_text = "\n".join(text_content)
         cleaned_text = self._clean_text(full_text)
-        
-        # Approximate page count (not accurate in docx without rendering)
         
         return {
             "extracted_text": cleaned_text,
@@ -149,14 +161,13 @@ class DocumentParser:
         return {
             "extracted_text": cleaned_text,
             "word_count": self._count_words(cleaned_text),
-            "page_count": 1, # Conceptually 1 document
+            "page_count": 1,
             "metadata": {"source": "txt"}
         }
 
     def _count_words(self, text: str) -> int:
         if not text:
             return 0
-        # Simple word count
         return len(text.split())
 
 document_parser = DocumentParser()

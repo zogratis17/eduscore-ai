@@ -4,6 +4,10 @@ from app.ai.grammar_analyzer import grammar_analyzer
 from app.ai.plagiarism_detector import plagiarism_detector
 from app.ai.vocabulary_analyzer import vocabulary_analyzer
 from app.ai.coherence_scorer import coherence_scorer
+from app.ai.topic_relevance import topic_relevance_analyzer
+from app.ai.ai_text_detector import ai_text_detector
+from app.ai.rag_engine import rag_engine
+from app.models.rubric import Rubric
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +17,13 @@ class EvaluationOrchestrator:
     and aggregates the results.
     """
     
-    async def evaluate_document(self, text: str, document_id: str = None) -> Dict[str, Any]:
+    async def evaluate_document(
+        self, 
+        text: str, 
+        document_id: str = None, 
+        prompt: str = None,
+        rubric: Rubric = None
+    ) -> Dict[str, Any]:
         """
         Runs all available evaluation modules on the text.
         """
@@ -37,25 +47,64 @@ class EvaluationOrchestrator:
         # 4. Coherence Analysis
         logger.info("Running Coherence Analysis...")
         coherence_result = coherence_scorer.analyze(text)
+
+        # 5. Topic Relevance (if prompt provided)
+        topic_result = {"score": 100, "similarity": 1.0} # Default perfect if no prompt
+        if prompt:
+            logger.info("Running Topic Relevance Analysis...")
+            topic_result = topic_relevance_analyzer.analyze(text, prompt)
+            
+        # 6. AI Text Detection
+        logger.info("Running AI Text Detection...")
+        ai_detection_result = ai_text_detector.detect(text)
         
-        # 5. Aggregation
-        # Weights:
-        # Grammar: 40%
-        # Vocabulary: 25%
-        # Coherence: 25%
-        # Plagiarism: Penalty only
-        
+        # 7. Aggregation using Rubric
         grammar_score = grammar_result["score"]
         vocab_score = vocab_result["score"]
         coherence_score = coherence_result["score"]
+        topic_score = topic_result["score"]
         plagiarism_pct = plagiarism_result["percentage"]
         
-        # Base Score
-        weighted_score = (
-            (grammar_score * 0.40) +
-            (vocab_score * 0.30) +
-            (coherence_score * 0.30)
-        )
+        # Map component names to local score variables
+        score_map = {
+            "Grammar": grammar_score,
+            "Vocabulary": vocab_score,
+            "Coherence": coherence_score,
+            "Topic Relevance": topic_score
+        }
+        
+        weighted_score = 0.0
+        
+        if rubric:
+            logger.info(f"Using Rubric: {rubric.name}")
+            for criterion in rubric.criteria:
+                # Fuzzy match criterion name to available scores
+                # Default to 0 if criterion logic not implemented yet
+                c_name = criterion.name
+                c_score = 0.0
+                
+                # Simple mapping logic (can be made more robust)
+                if "Grammar" in c_name or "Mechanics" in c_name:
+                    c_score = grammar_score
+                elif "Vocabulary" in c_name or "Lexical" in c_name:
+                    c_score = vocab_score
+                elif "Coherence" in c_name or "Flow" in c_name or "Structure" in c_name:
+                    c_score = coherence_score
+                elif "Topic" in c_name or "Relevance" in c_name or "Prompt" in c_name:
+                    c_score = topic_score
+                else:
+                    logger.warning(f"Unknown criterion in rubric: {c_name}. Skipping score contribution.")
+                    
+                weighted_score += (c_score * (criterion.weight / 100.0))
+        else:
+            # Fallback Legacy Weights
+            logger.info("No rubric provided. Using default weights.")
+            weighted_score = (
+                (grammar_score * 0.30) +
+                (vocab_score * 0.20) +
+                (coherence_score * 0.20) +
+                (topic_score * 0.30)
+            )
         
         final_score = weighted_score
         
@@ -65,31 +114,35 @@ class EvaluationOrchestrator:
             final_score -= deduction
             
         if plagiarism_pct > 30:
-             final_score *= 0.5 # Severe penalty per PRD
+             final_score *= 0.5 # Severe penalty
+             
+        # AI Penalty (if high confidence)
+        if ai_detection_result["score"] > 80:
+            final_score *= 0.8 # 20% penalty for AI generated content
 
         final_score = max(0.0, min(100.0, final_score))
         
         # Assign Grade
         grade = self._assign_grade(final_score)
         
+        # Generate Qualitative Feedback
+        feedback = await rag_engine.generate_feedback(
+            text, grammar_result, vocab_result, coherence_result, topic_result
+        )
+        
         return {
             "final_score": round(final_score, 2),
             "grade": grade,
+            "rubric_used": rubric.name if rubric else "Default",
             "components": {
                 "grammar": grammar_result,
                 "plagiarism": plagiarism_result,
                 "vocabulary": vocab_result,
                 "coherence": coherence_result,
-                # Placeholders for frontend compatibility until implemented
-                "topic_relevance": {"score": 0, "similarity": 0},
-                "ai_detection": {"score": 0, "perplexity": 0}
+                "topic_relevance": topic_result,
+                "ai_detection": ai_detection_result
             },
-            "overall_feedback": self._generate_feedback(
-                grammar_result, 
-                plagiarism_result, 
-                vocab_result, 
-                coherence_result
-            )
+            "overall_feedback": feedback
         }
 
     def _assign_grade(self, score: float) -> str:
@@ -103,35 +156,5 @@ class EvaluationOrchestrator:
         elif score >= 55: return "C"
         elif score >= 50: return "C-"
         else: return "F"
-
-    def _generate_feedback(self, grammar: Dict, plagiarism: Dict, vocab: Dict, coherence: Dict) -> str:
-        """
-        Generates simple feedback based on analysis.
-        """
-        feedback = []
-        
-        # Grammar
-        if grammar["score"] > 85:
-            feedback.append("Excellent grammar.")
-        elif grammar["score"] < 60:
-            feedback.append("Needs significant grammar review.")
-            
-        # Vocabulary
-        if vocab["score"] > 80:
-            feedback.append("Strong use of vocabulary.")
-        elif vocab["score"] < 50:
-            feedback.append("Try to use more varied and academic language.")
-            
-        # Coherence
-        if coherence["score"] > 80:
-            feedback.append("Well-structured and easy to follow.")
-        elif coherence["score"] < 50:
-            feedback.append("Consider improving paragraph transitions and structure.")
-
-        # Plagiarism
-        if plagiarism["percentage"] > 10:
-             feedback.append(f"WARNING: Plagiarism detected ({plagiarism['percentage']}%).")
-             
-        return " ".join(feedback)
 
 evaluation_orchestrator = EvaluationOrchestrator()

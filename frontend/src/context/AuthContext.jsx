@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import authService from '../services/authService';
+import { auth } from '../services/firebase';
 
 const AuthContext = createContext();
 
@@ -10,39 +11,57 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored token/user on mount
-    const storedUser = localStorage.getItem('eduscore_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    // Listen for Firebase Auth state changes
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      try {
+        if (firebaseUser) {
+          // User is signed in.
+          // Get the backend user profile using the token
+          // We can call authService.getCurrentUser() or hit the API directly
+          // But authService.getCurrentUser relies on auth.currentUser which is now set.
+          
+          // However, to be safe and ensure backend sync:
+          const idToken = await firebaseUser.getIdToken();
+          
+          // We assume api.js interceptor will pick up the token now that auth.currentUser is set
+          // But strictly speaking, we might want to pass the token explicitly if api.js is race-condition prone.
+          // Let's rely on authService which uses api.js
+          
+          const backendUser = await authService.getCurrentUser();
+          setUser(backendUser);
+        } else {
+          // User is signed out.
+          setUser(null);
+        }
+      } catch (error) {
+        console.error("Session restore failed:", error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const login = async (email, password) => {
-    // TODO: Replace with actual API call
-    console.log("Logging in with", email, password);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    if (email) { // Accept any email for now
-      const mockUser = {
-        id: '1',
-        name: 'Prof. Rajesh',
-        email: email,
-        role: 'educator',
-        avatar: 'https://ui-avatars.com/api/?name=Rajesh+Kumar&background=0D8ABC&color=fff'
-      };
-      setUser(mockUser);
-      localStorage.setItem('eduscore_user', JSON.stringify(mockUser));
-      return mockUser;
+    try {
+      const { user } = await authService.login(email, password);
+      setUser(user);
+      return user;
+    } catch (error) {
+      console.error("Login failed:", error);
+      throw error;
     }
-    throw new Error('Invalid credentials');
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('eduscore_user');
+  const logout = async () => {
+    try {
+      await authService.logout();
+      setUser(null);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   return (

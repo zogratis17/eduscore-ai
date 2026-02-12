@@ -20,6 +20,9 @@ class Document(BaseModel):
     word_count: Optional[int] = 0
     page_count: Optional[int] = None
     
+    prompt: Optional[str] = None # New field for topic relevance
+    rubric_id: Optional[str] = None # Selected rubric for evaluation
+    
     # Processing status
     status: str = Field(default="pending", index=True) # pending, processing, completed, failed
     error_message: Optional[str] = None

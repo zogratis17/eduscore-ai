@@ -3,11 +3,13 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, X, CheckCircle, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import RubricSelector from '../components/evaluation/RubricSelector';
 
 const UploadPage = () => {
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null); // 'success' | 'error'
+  const [selectedRubricId, setSelectedRubricId] = useState(null);
   const navigate = useNavigate();
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -43,6 +45,9 @@ const UploadPage = () => {
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
+        if (selectedRubricId) {
+          formData.append('rubric_id', selectedRubricId);
+        }
 
         await api.post('/documents/upload', formData, {
           headers: {
@@ -70,8 +75,16 @@ const UploadPage = () => {
       </div>
 
       {/* Dropzone */}
-      <div 
-        {...getRootProps()} 
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">1. Select Scoring Rubric</h2>
+        <RubricSelector
+          selectedRubricId={selectedRubricId}
+          onSelect={setSelectedRubricId}
+        />
+      </div>
+
+      <div
+        {...getRootProps()}
         className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer
           ${isDragActive ? 'border-primary-500 bg-primary-50' : 'border-gray-300 hover:border-gray-400 bg-white'}`}
       >
@@ -107,7 +120,7 @@ const UploadPage = () => {
                     <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => removeFile(file.name)}
                   className="text-gray-400 hover:text-red-500 transition-colors"
                 >
@@ -124,16 +137,16 @@ const UploadPage = () => {
             >
               {uploading ? (
                 <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Uploading...
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Uploading...
                 </>
               ) : (
                 <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Start Upload
+                  <Upload className="h-4 w-4 mr-2" />
+                  Start Upload
                 </>
               )}
             </button>

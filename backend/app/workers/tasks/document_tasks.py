@@ -48,8 +48,10 @@ def process_uploaded_document(document_id: str):
         parsed_data = document_parser.parse_file(file_path)
         
         # 4. Add to Plagiarism Corpus
-        if parsed_data.get("extracted_text"):
-            plagiarism_detector.add_document(document_id, parsed_data["extracted_text"])
+        # REMOVED: Redundant and incorrect call. 
+        # Persistence is handled in evaluation_tasks.py which runs after this.
+        # if parsed_data.get("extracted_text"):
+        #     plagiarism_detector.add_document(document_id, parsed_data["extracted_text"])
         
         # 5. Update document with results
         update_data = {

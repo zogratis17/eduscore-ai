@@ -1,5 +1,6 @@
 from celery import shared_task
 from pymongo import MongoClient
+from motor.motor_asyncio import AsyncIOMotorClient
 from bson.objectid import ObjectId
 from datetime import datetime
 import logging
@@ -7,18 +8,58 @@ import asyncio
 
 from app.core.config import settings
 from app.services.evaluation_orchestrator import evaluation_orchestrator
+from app.ai.plagiarism_detector import plagiarism_detector
 from app.models.evaluation import Evaluation
+from app.models.rubric import Rubric
 
 logger = logging.getLogger(__name__)
 
-# Helper to run async code in sync Celery task
-def run_async(coro):
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        # Ideally we shouldn't be here in a worker, but just in case
-        return asyncio.ensure_future(coro)
-    else:
-        return loop.run_until_complete(coro)
+async def run_async_evaluation(document_id: str, extracted_text: str, prompt: str = None, rubric_id: str = None):
+    """
+    Async function to run the evaluation and persistence logic.
+    """
+    # Async DB Client
+    client = AsyncIOMotorClient(settings.MONGODB_URL)
+    db = client[settings.MONGODB_DATABASE]
+    
+    try:
+        # 1. Initialize Plagiarism Corpus (Load existing hashes)
+        await plagiarism_detector.initialize(db)
+        
+        # 2. Fetch Rubric
+        rubric_doc = None
+        if rubric_id:
+            try:
+                rubric_doc = await db["rubrics"].find_one({"_id": ObjectId(rubric_id)})
+            except Exception:
+                logger.warning(f"Invalid rubric_id provided: {rubric_id}")
+        
+        # Fallback to default if no specific rubric found or provided
+        if not rubric_doc:
+             rubric_doc = await db["rubrics"].find_one({"is_default": True})
+
+        rubric = None
+        if rubric_doc:
+            try:
+                rubric = Rubric(**rubric_doc)
+            except Exception as e:
+                logger.error(f"Failed to parse rubric: {e}")
+        
+        # 3. Run Analysis
+        results = await evaluation_orchestrator.evaluate_document(
+            text=extracted_text, 
+            document_id=document_id,
+            prompt=prompt,
+            rubric=rubric
+        )
+        
+        # 4. Add to Plagiarism Corpus (Persist)
+        # We add it AFTER evaluation so it doesn't plagiarize itself (though we have exclude_doc_id logic)
+        await plagiarism_detector.add_document(db, document_id, extracted_text)
+        
+        return results
+    finally:
+        client.close()
 
 @shared_task(name="evaluate_document_task")
 def evaluate_document_task(document_id: str):
@@ -27,7 +68,7 @@ def evaluate_document_task(document_id: str):
     """
     logger.info(f"Starting evaluation for document: {document_id}")
     
-    # Synchronous MongoDB connection for Celery
+    # Synchronous MongoDB connection for fetching initial doc state
     client = MongoClient(settings.MONGODB_URL)
     db = client[settings.MONGODB_DATABASE]
     doc_collection = db["documents"]
@@ -48,14 +89,15 @@ def evaluate_document_task(document_id: str):
             )
             return
 
-        # 2. Run Evaluation (Async call wrapped in sync)
-        # We need a fresh event loop for the async orchestrator
+        rubric_id = doc.get("rubric_id")
+
+        # 2. Run Evaluation (Async)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
         try:
             results = loop.run_until_complete(
-                evaluation_orchestrator.evaluate_document(doc["extracted_text"])
+                run_async_evaluation(document_id, doc["extracted_text"], prompt=None, rubric_id=rubric_id)
             )
         finally:
             loop.close()
@@ -70,7 +112,6 @@ def evaluate_document_task(document_id: str):
             overall_feedback=results["overall_feedback"]
         )
         
-        # Upsert evaluation (replace if exists)
         eval_collection.replace_one(
             {"document_id": document_id},
             eval_in.model_dump(by_alias=True, exclude={"id"}),
@@ -82,7 +123,7 @@ def evaluate_document_task(document_id: str):
             {"_id": ObjectId(document_id)},
             {"$set": {
                 "status": "evaluated", 
-                "final_score": results["final_score"], # Store simple score on doc for easy listing
+                "final_score": results["final_score"],
                 "updated_at": datetime.utcnow()
             }}
         )

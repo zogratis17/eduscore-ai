@@ -1,5 +1,5 @@
-from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from typing import Any, List, Optional
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import os
 from bson import ObjectId
@@ -54,6 +54,8 @@ async def get_document(
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
+    prompt: Optional[str] = Form(None),
+    rubric_id: Optional[str] = Form(None),
     db: AsyncIOMotorDatabase = Depends(get_database),
     current_user: dict = Depends(get_current_user)
 ) -> Any:
@@ -98,7 +100,9 @@ async def upload_document(
         file_type=file_type,
         file_size_bytes=file_size,
         storage_path=storage_path,
-        status="pending"
+        status="pending",
+        prompt=prompt,
+        rubric_id=rubric_id
     )
 
     # Insert into MongoDB
