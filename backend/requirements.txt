@@ -24,6 +24,7 @@ aiofiles~=23.2.1         # For saving uploaded files asynchronously
 
 # --- Background Tasks ---
 celery[redis]~=5.3.6
+flower~=2.0.1
 redis~=5.0.1
 
 # --- Utilities ---
