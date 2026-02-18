@@ -116,7 +116,9 @@ const Header = () => {
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-            <p className="text-xs text-gray-500">{user?.role === 'educator' ? 'Associate Professor' : 'Admin'}</p>
+            <p className="text-xs text-gray-500">
+              {user?.role === 'teacher' ? 'Educator' : user?.role === 'admin' ? 'Administrator' : 'Student'}
+            </p>
           </div>
           <img
             className="h-9 w-9 rounded-full bg-gray-300 ring-2 ring-white shadow-sm"
