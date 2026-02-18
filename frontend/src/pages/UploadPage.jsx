@@ -109,13 +109,6 @@ const UploadPage = () => {
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
         />
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="e.g., Discuss the impact of artificial intelligence on modern healthcare..."
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
-        />
       </div>
 
       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
