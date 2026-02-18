@@ -10,6 +10,7 @@ const UploadPage = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null); // 'success' | 'error'
   const [selectedRubricId, setSelectedRubricId] = useState(null);
+  const [prompt, setPrompt] = useState('');
   const navigate = useNavigate();
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -48,6 +49,9 @@ const UploadPage = () => {
         if (selectedRubricId) {
           formData.append('rubric_id', selectedRubricId);
         }
+        if (prompt.trim()) {
+          formData.append('prompt', prompt.trim());
+        }
 
         await api.post('/documents/upload', formData, {
           headers: {
@@ -80,6 +84,20 @@ const UploadPage = () => {
         <RubricSelector
           selectedRubricId={selectedRubricId}
           onSelect={setSelectedRubricId}
+        />
+      </div>
+
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">2. Essay Prompt / Topic (Optional)</h2>
+        <p className="text-sm text-gray-500 mb-3">
+          Provide the essay prompt for more accurate topic relevance scoring.
+        </p>
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="e.g., Discuss the impact of artificial intelligence on modern healthcare..."
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
         />
       </div>
 

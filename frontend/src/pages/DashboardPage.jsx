@@ -4,38 +4,52 @@ import {
   Users,
   Clock,
   TrendingUp,
+  TrendingDown,
   MoreVertical,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Minus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
 import api from '../services/api';
 import { analyticsService } from '../services/analyticsService';
 
-const StatsCard = ({ title, value, change, icon: Icon, color }) => (
-  <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-500">{title}</p>
-        <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
+const StatsCard = ({ title, value, change, icon: Icon, color }) => {
+  const isPositive = change && change.startsWith('+') && change !== '+0';
+  const isNegative = change && change.startsWith('-');
+  const hasChange = change && change !== '' && change !== '0';
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-500">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
+        </div>
+        <div className={`p-3 rounded-lg ${color}`}>
+          <Icon className="h-6 w-6 text-white" />
+        </div>
       </div>
-      <div className={`p-3 rounded-lg ${color}`}>
-        <Icon className="h-6 w-6 text-white" />
-      </div>
+      {hasChange && (
+        <div className="mt-4 flex items-center text-sm">
+          <span className={`font-medium flex items-center ${isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-gray-500'}`}>
+            {isPositive ? <TrendingUp className="h-4 w-4 mr-1" /> : isNegative ? <TrendingDown className="h-4 w-4 mr-1" /> : <Minus className="h-4 w-4 mr-1" />}
+            {change}
+          </span>
+          <span className="text-gray-500 ml-2">vs last month</span>
+        </div>
+      )}
     </div>
-    <div className="mt-4 flex items-center text-sm">
-      <span className="text-green-600 font-medium flex items-center">
-        <TrendingUp className="h-4 w-4 mr-1" />
-        {change}
-      </span>
-      <span className="text-gray-500 ml-2">from last month</span>
-    </div>
-  </div>
-);
+  );
+};
 
 const DashboardPage = () => {
   const [documents, setDocuments] = useState([]);
   const [stats, setStats] = useState(null);
+  const [gradeData, setGradeData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,10 +58,18 @@ const DashboardPage = () => {
       try {
         const [docsRes, statsRes] = await Promise.all([
           api.get('/documents'),
-          analyticsService.getDashboardStats()
+          analyticsService.getDashboardStats(),
         ]);
         setDocuments(docsRes.data);
         setStats(statsRes);
+
+        // Fetch grade distribution (non-blocking)
+        try {
+          const gradeRes = await analyticsService.getGradeDistribution();
+          setGradeData(gradeRes);
+        } catch (e) {
+          console.warn('Grade distribution not available yet');
+        }
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
         setError("Failed to load dashboard data.");
@@ -63,9 +85,10 @@ const DashboardPage = () => {
     switch (status?.toLowerCase()) {
       case 'completed': return 'bg-green-100 text-green-800 border-green-200';
       case 'evaluated': return 'bg-green-100 text-green-800 border-green-200';
-      case 'processing': return 'bg-blue-100 text-blue-800 border-blue-200'; // Active processing
-      case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200'; // Uploaded, waiting
-      case 'failed': return 'bg-red-100 text-red-800 border-red-200';
+      case 'processing': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'failed':
+      case 'failed_evaluation': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-50 text-gray-600 border-gray-100';
     }
   };
@@ -76,12 +99,11 @@ const DashboardPage = () => {
       case 'evaluated': return <CheckCircle2 className="h-3 w-3 mr-1" />;
       case 'processing': return <Clock className="h-3 w-3 mr-1 animate-spin" />;
       case 'pending': return <Clock className="h-3 w-3 mr-1" />;
-      case 'failed': return <AlertCircle className="h-3 w-3 mr-1" />;
+      case 'failed':
+      case 'failed_evaluation': return <AlertCircle className="h-3 w-3 mr-1" />;
       default: return null;
     }
   };
-
-
 
   return (
     <div className="space-y-8">
@@ -104,39 +126,58 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Documents"
-          value={stats?.total_documents?.value || 0}
-          change={stats?.total_documents?.change || "-"}
+          value={stats?.total_documents?.value ?? 0}
+          change={stats?.total_documents?.change || ""}
           icon={FileText}
           color="bg-blue-500"
         />
         <StatsCard
           title="Avg. Score"
-          value={stats?.average_score?.value || 0}
-          change={stats?.average_score?.change || "-"}
+          value={stats?.average_score?.value ?? 0}
+          change={stats?.average_score?.change || ""}
           icon={CheckCircle2}
           color="bg-green-500"
         />
         <StatsCard
           title="Pending Review"
-          value={stats?.pending_review?.value || 0}
-          change={stats?.pending_review?.change || "-"}
+          value={stats?.pending_review?.value ?? 0}
+          change={stats?.pending_review?.change || ""}
           icon={Clock}
           color="bg-orange-500"
         />
         <StatsCard
-          title="Plagiarism Alerts"
-          value={stats?.alerts?.value || 0}
-          change={stats?.alerts?.change || "-"}
+          title="Alerts"
+          value={stats?.alerts?.value ?? 0}
+          change={stats?.alerts?.change || ""}
           icon={AlertCircle}
           color="bg-red-500"
         />
       </div>
 
+      {/* Grade Distribution Chart */}
+      {gradeData.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Grade Distribution</h2>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={gradeData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="grade" tick={{ fontSize: 12 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                formatter={(value) => [`${value} essays`, 'Count']}
+              />
+              <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* Recent Activity */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Recent Submissions</h2>
-          <Link to="/documents" className="text-sm font-medium text-primary-600 hover:text-primary-500">
+          <Link to="/results" className="text-sm font-medium text-primary-600 hover:text-primary-500">
             View all
           </Link>
         </div>

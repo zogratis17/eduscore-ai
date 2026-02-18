@@ -36,5 +36,6 @@ reportlab~=4.0.9         # PDF Generation
 # --- AI/ML ---
 datasketch~=1.6.4        # Plagiarism Detection (MinHash LSH)
 nltk~=3.8.1              # NLP Utilities (Tokenization, n-grams)
+google-generativeai>=0.8.0  # Gemini API for RAG Feedback
 # transformers~=4.37.0     # HuggingFace Models
 # torch~=2.2.0             # PyTorch (CPU)

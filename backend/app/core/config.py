@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     # AI Services
     LANGUAGETOOL_URL: str = "http://localhost:8010"
+    GEMINI_API_KEY: str = ""
     
     model_config = SettingsConfigDict(
         case_sensitive=True,

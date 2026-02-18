@@ -124,6 +124,9 @@ services:
       # LanguageTool
       LANGUAGETOOL_URL: http://languagetool:8010
       
+      # Gemini AI
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      
       # Firebase (from .env file)
       ENABLE_MOCK_AUTH: "true"
       FIREBASE_TYPE: ${FIREBASE_TYPE}
@@ -181,6 +184,9 @@ services:
       
       # LanguageTool
       LANGUAGETOOL_URL: http://languagetool:8010
+      
+      # Gemini AI
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       
       # AI Models
       MODELS_PATH: /app/models
