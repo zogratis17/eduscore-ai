@@ -128,7 +128,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       
       # Firebase (from .env file)
-      ENABLE_MOCK_AUTH: "true"
+      ENABLE_MOCK_AUTH: "false"
       FIREBASE_TYPE: ${FIREBASE_TYPE}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
       FIREBASE_PRIVATE_KEY_ID: ${FIREBASE_PRIVATE_KEY_ID}

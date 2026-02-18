@@ -14,7 +14,14 @@ class Evaluation(BaseModel):
     
     # Store detailed results from each analyzer
     components: Dict[str, Any] = Field(default_factory=dict)
-    
+
+    # Transparent score calculation breakdown
+    score_breakdown: Optional[Dict[str, Any]] = None
+
+    # Which scoring engine was used: "gemini" or "fallback"
+    scoring_engine: Optional[str] = None
+    rubric_used: Optional[str] = None
+
     # High-level feedback
     overall_feedback: Optional[str] = None
     

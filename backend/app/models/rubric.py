@@ -14,7 +14,7 @@ class Rubric(BaseModel):
     name: str = Field(..., description="Name of the rubric (e.g., 'Standard Essay', 'Creative Writing')")
     description: Optional[str] = None
     criteria: List[Criterion] = Field(..., description="List of evaluation criteria")
-    created_by: str = Field(..., description="User ID who created this rubric")
+    created_by: str = Field(default="", description="User ID who created this rubric")
     is_default: bool = Field(default=False, description="If true, used when no rubric is specified")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

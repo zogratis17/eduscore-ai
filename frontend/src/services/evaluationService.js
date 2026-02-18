@@ -4,22 +4,14 @@ export const evaluationService = {
   // --- Documents ---
 
   // Upload a single document
-  uploadDocument: async (file, prompt, onProgress) => {
+  uploadDocument: async (file, prompt, rubricId, onProgress) => {
     const formData = new FormData();
     formData.append('file', file);
     if (prompt) {
       formData.append('prompt', prompt);
     }
-    if (file.rubric_id) {
-      formData.append('rubric_id', file.rubric_id);
-    } else if (prompt && typeof prompt === 'object' && prompt.rubric_id) {
-      // Handle case where second arg is an options object or similar, but for now let's be explicit
-      // Actually, I should check how I'm calling this. 
-      // The signature is (file, prompt, onProgress).
-      // I should change the signature or pass it in a different way.
-      // Let's check how the component calls it.
-      // It logic in DocumentUploader.jsx is: evaluationService.uploadDocument(file, prompt, ...)
-      // I'll update the signature here to: uploadDocument: async (file, prompt, rubricId, onProgress) => {
+    if (rubricId) {
+      formData.append('rubric_id', rubricId);
     }
 
     const response = await api.post('/documents/upload', formData, {

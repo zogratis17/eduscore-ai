@@ -149,7 +149,10 @@ async def delete_document(
     # Delete from Database
     await db["documents"].delete_one({"_id": ObjectId(document_id)})
     
-    # Also delete evaluations? Yes, usually cascade.
+    # Also delete evaluations
     await db["evaluations"].delete_many({"document_id": document_id})
+
+    # Clean up plagiarism corpus — remove the fingerprint so re-uploads don't ghost-match
+    await db["plagiarism_hashes"].delete_one({"document_id": document_id})
     
     return None

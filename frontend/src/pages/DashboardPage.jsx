@@ -53,33 +53,54 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchDashboardData = async (isPolling = false) => {
+    try {
+      // Don't set loading on updates to avoid UI flicker
+      if (!isPolling) setLoading(true);
+
+      const [docsRes, statsRes] = await Promise.all([
+        api.get('/documents'),
+        analyticsService.getDashboardStats(),
+      ]);
+      setDocuments(docsRes.data);
+      setStats(statsRes);
+
+      // Fetch grade distribution (non-blocking)
       try {
-        const [docsRes, statsRes] = await Promise.all([
-          api.get('/documents'),
-          analyticsService.getDashboardStats(),
-        ]);
-        setDocuments(docsRes.data);
-        setStats(statsRes);
-
-        // Fetch grade distribution (non-blocking)
-        try {
-          const gradeRes = await analyticsService.getGradeDistribution();
-          setGradeData(gradeRes);
-        } catch (e) {
-          console.warn('Grade distribution not available yet');
-        }
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err);
-        setError("Failed to load dashboard data.");
-      } finally {
-        setLoading(false);
+        const gradeRes = await analyticsService.getGradeDistribution();
+        setGradeData(gradeRes);
+      } catch (e) {
+        console.warn('Grade distribution not available yet');
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
+      if (!isPolling) setError("Failed to load dashboard data.");
+    } finally {
+      if (!isPolling) setLoading(false);
+    }
+  };
 
-    fetchData();
+  useEffect(() => {
+    fetchDashboardData();
   }, []);
+
+  // Poll for updates if any documents are processing
+  useEffect(() => {
+    const hasPending = documents.some(doc =>
+      doc.status === 'processing' || doc.status === 'pending'
+    );
+
+    let intervalId;
+    if (hasPending) {
+      intervalId = setInterval(() => {
+        fetchDashboardData(true);
+      }, 5000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [documents]);
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {

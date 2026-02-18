@@ -82,22 +82,10 @@ class FirebaseAuth:
         
         try:
             token_str = credentials.credentials
-            # print(f"DEBUG: Verifying token: {token_str[:10]}...{token_str[-10:] if len(token_str) > 20 else ''} (Len: {len(token_str)})")
             
-            try:
-                # Verify the Firebase ID token
-                decoded_token = auth.verify_id_token(token_str)
-                return decoded_token
-            except auth.InvalidIdTokenError as e:
-                # Handle clock skew (Token used too early)
-                if "used too early" in str(e):
-                    print(f"WARNING: Token used too early (Clock skew). Retrying in 1s... {e}")
-                    import time
-                    time.sleep(2) # Wait for server clock to check up
-                    decoded_token = auth.verify_id_token(token_str)
-                    return decoded_token
-                else:
-                    raise e
+            # Allow 30s clock skew tolerance (common with Docker containers)
+            decoded_token = auth.verify_id_token(token_str, clock_skew_seconds=30)
+            return decoded_token
             
         except auth.InvalidIdTokenError as e:
             print(f"DEBUG: InvalidIdTokenError: {e}")

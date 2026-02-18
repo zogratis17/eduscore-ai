@@ -40,8 +40,9 @@ const UploadPage = () => {
 
     setUploading(true);
     setUploadStatus(null);
+    let lastDocId = null;
 
-    // Upload files sequentially for now (could be parallel)
+    // Upload files sequentially
     try {
       for (const file of files) {
         const formData = new FormData();
@@ -53,14 +54,21 @@ const UploadPage = () => {
           formData.append('prompt', prompt.trim());
         }
 
-        await api.post('/documents/upload', formData, {
+        const response = await api.post('/documents/upload', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         });
+        lastDocId = response.data.id;
       }
       setUploadStatus('success');
-      setTimeout(() => navigate('/dashboard'), 2000);
+
+      // If single file, go straight to its results. If multiple, go to dashboard.
+      if (files.length === 1 && lastDocId) {
+        setTimeout(() => navigate(`/results/${lastDocId}`), 1500);
+      } else {
+        setTimeout(() => navigate('/dashboard'), 2000);
+      }
     } catch (error) {
       console.error('Upload failed:', error);
       setUploadStatus('error');

@@ -1,4 +1,6 @@
+import React, { useState, useRef } from 'react';
 import RubricSelector from './RubricSelector';
+import { evaluationService } from '../../services/evaluationService';
 
 const DocumentUploader = ({ onUploadSuccess }) => {
   const [file, setFile] = useState(null);

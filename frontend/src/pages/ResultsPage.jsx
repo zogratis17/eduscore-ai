@@ -1,232 +1,133 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import {
-  ChevronLeft,
-  Download,
-  AlertTriangle,
-  CheckCircle,
-  Info,
-  BarChart,
-  Book,
-  FileCheck
-} from 'lucide-react';
-import {
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
-  BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend
-} from 'recharts';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Loader2, AlertTriangle, SpellCheck, FileCheck, BrainCircuit, Target, Sparkles, CheckCircle } from 'lucide-react';
 import api from '../services/api';
-import EssayViewer from '../components/evaluation/EssayViewer'; // Import new component
+import AnalysisView from '../components/studio/AnalysisView';
+
+// ─── Processing Stages ────
+const STAGES = [
+  { key: 'analyzing_grammar', label: 'Grammar Analysis', icon: SpellCheck, color: 'text-blue-600' },
+  { key: 'analyzing_plagiarism', label: 'Plagiarism Check', icon: FileCheck, color: 'text-purple-600' },
+  { key: 'analyzing_with_gemini', label: 'AI Deep Analysis', icon: BrainCircuit, color: 'text-indigo-600' },
+  { key: 'calculating_score', label: 'Calculating Score', icon: Target, color: 'text-emerald-600' },
+  { key: 'generating_feedback', label: 'Generating Feedback', icon: Sparkles, color: 'text-amber-600' },
+];
+
+const ProcessingStepper = ({ currentStatus }) => {
+  const currentIdx = STAGES.findIndex(s => s.key === currentStatus);
+  // If status not found (e.g. 'queued'), default to -1 (start)
+  // If status is 'completed' or unknown future state, show all done? handled by parent showing AnalysisView
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full">
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 max-w-lg w-full">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-full text-sm font-medium mb-3">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Evaluating Your Essay
+          </div>
+          <p className="text-gray-500 text-sm">Usually takes 10-30 seconds</p>
+        </div>
+        <div className="space-y-4">
+          {STAGES.map((stage, idx) => {
+            const Icon = stage.icon;
+            // logic: if currentIdx is valid, use it. if currentStatus is unknown/queued, everything is pending.
+            // But usually we get a valid status. 
+            // Treat 'queued' or 'processing' as index -1 (or 0).
+            const isDone = idx < currentIdx;
+            const isActive = idx === currentIdx;
+
+            return (
+              <div key={stage.key} className={`flex items-center gap-4 p-3 rounded-xl transition-all ${isActive ? 'bg-blue-50 border border-blue-100' : 'opacity-60'
+                }`}>
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isDone ? 'bg-green-100 text-green-600' : isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                  {isDone ? <CheckCircle className="h-5 w-5" /> : isActive ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+                </div>
+                <span className={`font-medium ${isActive ? 'text-blue-900' : 'text-gray-500'}`}>{stage.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ResultsPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [doc, setDoc] = useState(null);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
 
+  const fetchData = useCallback(async () => {
+    try {
+      const [docRes, resRes] = await Promise.all([
+        api.get(`/documents/${id}`),
+        api.get(`/evaluation/results/${id}`).catch(() => ({ data: null }))
+      ]);
+      setDoc(docRes.data);
+      if (resRes.data?.status === 'processing') {
+        setIsProcessing(true);
+        setResults(null);
+      } else {
+        setIsProcessing(false);
+        setResults(resRes.data);
+      }
+    } catch (error) {
+      console.error('Error fetching results:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Poll while processing
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    if (!isProcessing) return;
+    const interval = setInterval(async () => {
       try {
         const [docRes, resRes] = await Promise.all([
           api.get(`/documents/${id}`),
           api.get(`/evaluation/results/${id}`)
         ]);
         setDoc(docRes.data);
-        setResults(resRes.data);
-      } catch (error) {
-        console.error('Error fetching results:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [id]);
+        if (resRes.data?.status !== 'processing') {
+          setIsProcessing(false);
+          setResults(resRes.data);
+        }
+      } catch (e) { /* retry */ }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isProcessing, id]);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div></div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-10 w-10 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
 
-  const radarData = results ? [
-    { subject: 'Grammar', A: results.components?.grammar?.score || 0, fullMark: 100 },
-    { subject: 'Vocabulary', A: results.components?.vocabulary?.score || 0, fullMark: 100 },
-    { subject: 'Coherence', A: results.components?.coherence?.score || 0, fullMark: 100 },
-    { subject: 'Relevance', A: results.components?.topic_relevance?.score || 0, fullMark: 100 },
-    { subject: 'Originality', A: 100 - (results.components?.plagiarism?.percentage || 0), fullMark: 100 },
-  ] : [];
+  if (isProcessing) {
+    return <ProcessingStepper currentStatus={doc?.status} />;
+  }
+
+  if (!results && !doc) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center">
+        <AlertTriangle className="h-12 w-12 text-amber-400 mb-3" />
+        <h2 className="text-lg font-bold text-gray-900">Document Not Found</h2>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Breadcrumbs & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link to="/results" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <ChevronLeft className="h-6 w-6 text-gray-600" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{doc?.filename}</h1>
-            <p className="text-sm text-gray-500">Evaluation Report • ID: {id.substring(0, 8)}</p>
-          </div>
-        </div>
-        <button className="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all shadow-sm">
-          <Download className="h-4 w-4 mr-2" />
-          Export PDF
-        </button>
-      </div>
-
-      {/* Main Score & Grade */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1 bg-white p-8 rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center justify-center text-center">
-          <div className="relative">
-            <svg className="h-48 w-48">
-              <circle className="text-gray-100" strokeWidth="10" stroke="currentColor" fill="transparent" r="85" cx="96" cy="96" />
-              <circle
-                className="text-primary-600 transition-all duration-1000 ease-out"
-                strokeWidth="10"
-                strokeDasharray={534}
-                strokeDashoffset={534 - (534 * (results?.final_score || 0)) / 100}
-                strokeLinecap="round"
-                stroke="currentColor"
-                fill="transparent"
-                r="85" cx="96" cy="96"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-5xl font-black text-gray-900">{results?.final_score || 0}</span>
-              <span className="text-sm font-semibold text-gray-500 uppercase tracking-widest">Score</span>
-            </div>
-          </div>
-          <div className="mt-6">
-            <span className={`text-2xl font-bold px-4 py-1.5 rounded-full ${results?.final_score >= 80 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-              Grade {results?.grade || 'N/A'}
-            </span>
-          </div>
-        </div>
-
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-            <BarChart className="h-5 w-5 text-primary-500" />
-            Competency Breakdown
-          </h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                <PolarGrid stroke="#e5e7eb" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 12 }} />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar
-                  name="Student"
-                  dataKey="A"
-                  stroke="#2563eb"
-                  fill="#3b82f6"
-                  fillOpacity={0.5}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* --- NEW INTERACTIVE VIEWER --- */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-200 bg-gray-50/50">
-          <h3 className="font-bold text-gray-900 flex items-center gap-2">
-            <Book className="h-5 w-5 text-blue-500" />
-            Interactive Feedback
-          </h3>
-        </div>
-        <div className="p-0">
-          {doc?.extracted_text ? (
-            <EssayViewer
-              text={doc.extracted_text}
-              grammarErrors={results?.components?.grammar?.errors || []}
-            />
-          ) : (
-            <div className="p-8 text-center text-gray-500">Document text unavailable.</div>
-          )}
-        </div>
-      </div>
-
-      {/* Detailed Analysis (Remaining) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Plagiarism & AI */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-              <FileCheck className="h-5 w-5 text-purple-500" />
-              Integrity Report
-            </h3>
-            <span className={`text-sm font-bold ${results?.components?.plagiarism?.percentage > 20 ? 'text-red-600' : 'text-green-600'}`}>
-              Similarity: {results?.components?.plagiarism?.percentage || 0}%
-            </span>
-          </div>
-          <div className="p-6 space-y-6">
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Originality Score</p>
-              <div className="w-full bg-gray-100 rounded-full h-2.5">
-                <div
-                  className={`h-2.5 rounded-full ${results?.components?.plagiarism?.percentage > 20 ? 'bg-red-500' : 'bg-green-500'}`}
-                  style={{ width: `${100 - (results?.components?.plagiarism?.percentage || 0)}%` }}
-                ></div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-gray-50 rounded-xl">
-              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">AI Text Probability</h4>
-              <div className="flex items-center gap-4">
-                <span className="text-2xl font-black text-gray-800">{results?.components?.ai_detection?.score || 0}%</span>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  {results?.components?.ai_detection?.score > 50
-                    ? "Content shows high patterns of AI-generation."
-                    : "Content appears likely to be human-written."}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* AI Feedback */}
-        <div className="bg-primary-900 text-white p-8 rounded-2xl shadow-xl overflow-hidden relative">
-          <div className="relative z-10">
-            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Info className="h-6 w-6 text-primary-300" />
-              AI Constructive Feedback
-            </h3>
-            <p className="text-primary-100 leading-relaxed text-lg italic">
-              "{results?.overall_feedback || "The document presents a well-structured argument with clear logical flow. To improve, focus on expanding the academic vocabulary and refining the sentence transitions in the conclusion."}"
-            </p>
-          </div>
-          <div className="absolute top-0 right-0 p-8 opacity-10">
-            <Book className="h-32 w-32" />
-          </div>
-        </div>
-        {/* Technical Details (Transparency) */}
-        <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
-            Algorithm Reliability & Methodology
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-            <div>
-              <p className="font-semibold text-gray-900">Grammar Engine</p>
-              <p className="text-gray-600">LanguageTool (Rule-based NLP)</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Detected {results?.components?.grammar?.errors?.length || 0} issues.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900">Plagiarism Detection</p>
-              <p className="text-gray-600">MinHash LSH (Locality Sensitive Hashing)</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Compared against local database signature.
-              </p>
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900">AI Scoring Logic</p>
-              <p className="text-gray-600">Weighted Rubric Orchestrator</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Final score is a weighted aggregation of 5 sub-modules.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="h-full w-full">
+      <AnalysisView doc={doc} results={results} onBack={() => navigate('/dashboard')} />
     </div>
   );
 };

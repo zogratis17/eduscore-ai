@@ -85,8 +85,14 @@ const RubricManagerPage = () => {
             fetchRubrics();
             setTimeout(() => setSuccessMsg(''), 3000);
         } catch (err) {
-            const detail = err.response?.data?.detail || 'Failed to save rubric.';
-            setFormError(detail);
+            const detail = err.response?.data?.detail;
+            let message = 'Failed to save rubric.';
+            if (typeof detail === 'string') {
+                message = detail;
+            } else if (Array.isArray(detail)) {
+                message = detail.map(d => d.msg || JSON.stringify(d)).join('; ');
+            }
+            setFormError(message);
         }
     };
 

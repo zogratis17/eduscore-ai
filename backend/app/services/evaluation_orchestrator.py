@@ -1,149 +1,271 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Callable, Optional
 from app.ai.grammar_analyzer import grammar_analyzer
 from app.ai.plagiarism_detector import plagiarism_detector
-from app.ai.vocabulary_analyzer import vocabulary_analyzer
-from app.ai.coherence_scorer import coherence_scorer
-from app.ai.topic_relevance import topic_relevance_analyzer
-from app.ai.ai_text_detector import ai_text_detector
+from app.ai.gemini_evaluator import gemini_evaluator
 from app.ai.rag_engine import rag_engine
 from app.models.rubric import Rubric
 
 logger = logging.getLogger(__name__)
 
+
 class EvaluationOrchestrator:
     """
-    Coordinator service that runs various AI analysis modules on a document
-    and aggregates the results.
+    Coordinator service that runs AI analysis modules on a document.
+    Uses Gemini for vocabulary/coherence/relevance/AI detection, with
+    fallback to legacy statistical analyzers if Gemini is unavailable.
     """
-    
+
     async def evaluate_document(
-        self, 
-        text: str, 
-        document_id: str = None, 
+        self,
+        text: str,
+        document_id: str = None,
         prompt: str = None,
-        rubric: Rubric = None
+        rubric: Rubric = None,
+        status_callback: Optional[Callable[[str], None]] = None,
     ) -> Dict[str, Any]:
-        """
-        Runs all available evaluation modules on the text.
-        """
         if not text:
             raise ValueError("No text provided for evaluation")
 
-        logger.info("Starting document evaluation...")
-        
-        # 1. Grammar Analysis
-        logger.info("Running Grammar Analysis...")
-        grammar_result = await grammar_analyzer.analyze(text)
-        
-        # 2. Plagiarism Detection
-        logger.info("Running Plagiarism Detection...")
-        plagiarism_result = plagiarism_detector.check_plagiarism(text, exclude_doc_id=document_id)
-        
-        # 3. Vocabulary Analysis
-        logger.info("Running Vocabulary Analysis...")
-        vocab_result = vocabulary_analyzer.analyze(text)
-        
-        # 4. Coherence Analysis
-        logger.info("Running Coherence Analysis...")
-        coherence_result = coherence_scorer.analyze(text)
+        def _update(stage: str):
+            if status_callback:
+                try:
+                    status_callback(stage)
+                except Exception as e:
+                    logger.warning(f"Status callback failed: {e}")
 
-        # 5. Topic Relevance (if prompt provided)
-        topic_result = {"score": 100, "similarity": 1.0} # Default perfect if no prompt
-        if prompt:
-            logger.info("Running Topic Relevance Analysis...")
-            topic_result = topic_relevance_analyzer.analyze(text, prompt)
-            
-        # 6. AI Text Detection
-        logger.info("Running AI Text Detection...")
-        ai_detection_result = ai_text_detector.detect(text)
-        
-        # 7. Aggregation using Rubric
-        grammar_score = grammar_result["score"]
+        logger.info("Starting document evaluation...")
+
+        # ── Step 1: Grammar (LanguageTool — always run) ──
+        _update("analyzing_grammar")
+        logger.info("Running Grammar Analysis (LanguageTool)...")
+        grammar_result = await grammar_analyzer.analyze(text)
+
+        # ── Step 2: Plagiarism (MinHash — always run) ──
+        _update("analyzing_plagiarism")
+        logger.info("Running Plagiarism Detection (MinHash)...")
+        plagiarism_result = plagiarism_detector.check_plagiarism(
+            text, exclude_doc_id=document_id
+        )
+
+        # ── Step 3: Gemini Evaluation (vocab + coherence + relevance + AI) ──
+        _update("analyzing_with_gemini")
+        logger.info("Running Gemini AI Evaluation...")
+        gemini_result = await gemini_evaluator.evaluate(text, prompt=prompt)
+
+        if not gemini_result:
+            raise RuntimeError(
+                "Gemini AI is currently unavailable. Evaluation cannot proceed without it. "
+                "Please check if the API key is valid and the rate limit hasn't been exceeded, then retry."
+            )
+
+        scoring_engine = "gemini"
+        logger.info("Using Gemini scores for evaluation.")
+
+        vocab_result = {
+            "score": gemini_result["vocabulary"]["score"],
+            "reasoning": gemini_result["vocabulary"].get("reasoning", ""),
+            "strengths": gemini_result["vocabulary"].get("strengths", []),
+            "improvements": gemini_result["vocabulary"].get("improvements", []),
+            "engine": "gemini",
+        }
+        coherence_result = {
+            "score": gemini_result["coherence"]["score"],
+            "reasoning": gemini_result["coherence"].get("reasoning", ""),
+            "strengths": gemini_result["coherence"].get("strengths", []),
+            "improvements": gemini_result["coherence"].get("improvements", []),
+            "engine": "gemini",
+        }
+        topic_result = {
+            "score": gemini_result["topic_relevance"]["score"],
+            "reasoning": gemini_result["topic_relevance"].get("reasoning", ""),
+            "strengths": gemini_result["topic_relevance"].get("strengths", []),
+            "improvements": gemini_result["topic_relevance"].get("improvements", []),
+            "engine": "gemini",
+        }
+        ai_detection_result = {
+            "score": gemini_result["ai_detection"]["score"],
+            "label": gemini_result["ai_detection"].get("label", "Unknown"),
+            "reasoning": gemini_result["ai_detection"].get("reasoning", ""),
+            "engine": "gemini",
+        }
+
+        # ── Step 4: Score Aggregation ──
+        _update("calculating_score")
+
+        # Grammar may be None if LanguageTool was down
+        grammar_score = grammar_result.get("score")
+        grammar_available = grammar_score is not None
+        if not grammar_available:
+            grammar_score = 0  # won't be used in weighting
+            logger.warning("Grammar score unavailable (LanguageTool down). Excluding from weighted score.")
+
         vocab_score = vocab_result["score"]
         coherence_score = coherence_result["score"]
         topic_score = topic_result["score"]
         plagiarism_pct = plagiarism_result["percentage"]
-        
-        # Map component names to local score variables
+
+        # Score lookup for criterion matching
         score_map = {
-            "Grammar": grammar_score,
-            "Vocabulary": vocab_score,
-            "Coherence": coherence_score,
-            "Topic Relevance": topic_score
+            "grammar": grammar_score,
+            "vocabulary": vocab_score,
+            "coherence": coherence_score,
+            "topic_relevance": topic_score,
         }
-        
+
+        # Build weighted components
+        weighted_components = []
         weighted_score = 0.0
-        
+        total_weight_used = 0.0
+
         if rubric:
             logger.info(f"Using Rubric: {rubric.name}")
             for criterion in rubric.criteria:
-                # Fuzzy match criterion name to available scores
-                # Default to 0 if criterion logic not implemented yet
-                c_name = criterion.name
-                c_score = 0.0
-                
-                # Simple mapping logic (can be made more robust)
-                if "Grammar" in c_name or "Mechanics" in c_name:
-                    c_score = grammar_score
-                elif "Vocabulary" in c_name or "Lexical" in c_name:
-                    c_score = vocab_score
-                elif "Coherence" in c_name or "Flow" in c_name or "Structure" in c_name:
-                    c_score = coherence_score
-                elif "Topic" in c_name or "Relevance" in c_name or "Prompt" in c_name:
-                    c_score = topic_score
-                else:
-                    logger.warning(f"Unknown criterion in rubric: {c_name}. Skipping score contribution.")
-                    
-                weighted_score += (c_score * (criterion.weight / 100.0))
-        else:
-            # Fallback Legacy Weights
-            logger.info("No rubric provided. Using default weights.")
-            weighted_score = (
-                (grammar_score * 0.30) +
-                (vocab_score * 0.20) +
-                (coherence_score * 0.20) +
-                (topic_score * 0.30)
-            )
-        
-        final_score = weighted_score
-        
-        # Apply penalties
-        if plagiarism_pct > 0:
-            deduction = plagiarism_pct * 0.5
-            final_score -= deduction
-            
-        if plagiarism_pct > 30:
-             final_score *= 0.5 # Severe penalty
-             
-        # AI Penalty (if high confidence)
-        if ai_detection_result["score"] > 80:
-            final_score *= 0.8 # 20% penalty for AI generated content
+                matched_key = self._match_criterion(criterion.name)
 
-        final_score = max(0.0, min(100.0, final_score))
-        
-        # Assign Grade
+                # Skip grammar if unavailable
+                if matched_key == "grammar" and not grammar_available:
+                    logger.info(f"Skipping criterion '{criterion.name}' — grammar unavailable.")
+                    continue
+
+                c_score = score_map.get(matched_key, 0)
+                if matched_key is None:
+                    logger.warning(f"Unknown criterion: '{criterion.name}'. Using score 0.")
+
+                contribution = round(c_score * (criterion.weight / 100.0), 2)
+                weighted_score += contribution
+                total_weight_used += criterion.weight
+                weighted_components.append({
+                    "name": criterion.name,
+                    "raw_score": round(c_score, 2),
+                    "weight": criterion.weight,
+                    "contribution": contribution,
+                })
+        else:
+            logger.info("No rubric provided. Using default weights.")
+            defaults = [
+                ("Grammar", "grammar", 30),
+                ("Vocabulary", "vocabulary", 20),
+                ("Coherence", "coherence", 20),
+                ("Topic Relevance", "topic_relevance", 30),
+            ]
+            for name, key, weight in defaults:
+                if key == "grammar" and not grammar_available:
+                    continue
+                c_score = score_map[key]
+                contribution = round(c_score * (weight / 100.0), 2)
+                weighted_score += contribution
+                total_weight_used += weight
+                weighted_components.append({
+                    "name": name,
+                    "raw_score": round(c_score, 2),
+                    "weight": weight,
+                    "contribution": contribution,
+                })
+
+        # Normalize if some criteria were skipped (weights don't add to 100)
+        if total_weight_used > 0 and total_weight_used < 100:
+            scale = 100.0 / total_weight_used
+            weighted_score *= scale
+            for comp in weighted_components:
+                comp["adjusted_weight"] = round(comp["weight"] * scale, 1)
+                comp["contribution"] = round(comp["contribution"] * scale, 2)
+            logger.info(f"Weights only summed to {total_weight_used}%. Normalized to 100%.")
+
+        weighted_total = round(weighted_score, 2)
+        final_score = weighted_score
+
+        # Apply penalties
+        penalties = []
+
+        # Plagiarism penalty — single graduated penalty, not stacking
+        if plagiarism_pct > 50:
+            deduction = round(final_score * 0.5, 2)
+            final_score *= 0.5
+            penalties.append({
+                "name": "Severe Plagiarism",
+                "detail": f"{plagiarism_pct}% similarity — 50% score reduction",
+                "deduction": -deduction,
+            })
+        elif plagiarism_pct > 20:
+            deduction = round(plagiarism_pct * 0.4, 2)
+            final_score -= deduction
+            penalties.append({
+                "name": "Plagiarism",
+                "detail": f"{plagiarism_pct}% similarity detected",
+                "deduction": -deduction,
+            })
+        elif plagiarism_pct > 5:
+            deduction = round(plagiarism_pct * 0.2, 2)
+            final_score -= deduction
+            penalties.append({
+                "name": "Minor Similarity",
+                "detail": f"{plagiarism_pct}% similarity detected",
+                "deduction": -deduction,
+            })
+        # <= 5% is considered noise/common phrases — no penalty
+
+        if ai_detection_result["score"] > 80:
+            ai_penalty = round(final_score * 0.2, 2)
+            final_score *= 0.8
+            penalties.append({
+                "name": "AI Content",
+                "detail": f"AI probability {ai_detection_result['score']}% — 20% penalty",
+                "deduction": -ai_penalty,
+            })
+
+        final_score = round(max(0.0, min(100.0, final_score)), 2)
+
+        score_breakdown = {
+            "weighted_components": weighted_components,
+            "weighted_total": weighted_total,
+            "penalties": penalties,
+            "final_score": final_score,
+        }
+
         grade = self._assign_grade(final_score)
-        
-        # Generate Qualitative Feedback
+
+        # ── Step 5: Generate Feedback ──
+        _update("generating_feedback")
         feedback = await rag_engine.generate_feedback(
             text, grammar_result, vocab_result, coherence_result, topic_result
         )
-        
+
         return {
             "final_score": round(final_score, 2),
             "grade": grade,
             "rubric_used": rubric.name if rubric else "Default",
+            "scoring_engine": scoring_engine,
             "components": {
                 "grammar": grammar_result,
                 "plagiarism": plagiarism_result,
                 "vocabulary": vocab_result,
                 "coherence": coherence_result,
                 "topic_relevance": topic_result,
-                "ai_detection": ai_detection_result
+                "ai_detection": ai_detection_result,
             },
-            "overall_feedback": feedback
+            "score_breakdown": score_breakdown,
+            "overall_feedback": feedback,
         }
+
+    def _match_criterion(self, name: str) -> str:
+        """Map a rubric criterion name to an internal score key."""
+        n = name.lower()
+        grammar_words = ["grammar", "mechanic", "spelling", "punctuation", "syntax"]
+        vocab_words = ["vocab", "lexic", "word choice", "diction", "language use"]
+        coherence_words = ["coheren", "flow", "structure", "organization", "logic", "clarity",
+                           "consistency", "quality"]
+        topic_words = ["topic", "relevan", "prompt", "focus", "content", "thesis", "argument"]
+
+        if any(w in n for w in grammar_words):
+            return "grammar"
+        elif any(w in n for w in vocab_words):
+            return "vocabulary"
+        elif any(w in n for w in coherence_words):
+            return "coherence"
+        elif any(w in n for w in topic_words):
+            return "topic_relevance"
+        return None
 
     def _assign_grade(self, score: float) -> str:
         if score >= 90: return "A+"
@@ -156,5 +278,6 @@ class EvaluationOrchestrator:
         elif score >= 55: return "C"
         elif score >= 50: return "C-"
         else: return "F"
+
 
 evaluation_orchestrator = EvaluationOrchestrator()
