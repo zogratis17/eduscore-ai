@@ -32,6 +32,9 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<LoginPage />} />
+
           {/* Legacy Dashboard Routes (Use DashboardLayout) */}
           <Route element={<ProtectedRoute layout={DashboardLayout} />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
