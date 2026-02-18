@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, BrainCircuit, ShieldAlert, Scale, CheckCircle2,
     Highlighter, Info, Copy, FileText, ChevronRight, AlertTriangle,
-    Activity, Save, CheckCircle
+    Activity, Save, CheckCircle, Loader2
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -16,19 +16,23 @@ const AnalysisView = ({ doc, results, onBack }) => {
     const [scores, setScores] = useState({});
     const [rubricCriteria, setRubricCriteria] = useState([]);
     const [pdfUrl, setPdfUrl] = useState(null);
+    const [loadingPdf, setLoadingPdf] = useState(true);
 
-    // Fetch PDF blob if text is missing
+    // Always fetch PDF for viewing
     useEffect(() => {
         const loadPdf = async () => {
-            if (doc && !doc.extracted_text) {
-                try {
-                    const docId = doc._id || doc.id;
-                    const response = await api.get(`/documents/${docId}/view`, { responseType: 'blob' });
-                    const url = URL.createObjectURL(response.data);
-                    setPdfUrl(url);
-                } catch (e) {
-                    console.error("Failed to load PDF:", e);
-                }
+            if (!doc) return;
+            
+            try {
+                setLoadingPdf(true);
+                const docId = doc._id || doc.id;
+                const response = await api.get(`/documents/${docId}/view`, { responseType: 'blob' });
+                const url = URL.createObjectURL(response.data);
+                setPdfUrl(url);
+            } catch (e) {
+                console.error("Failed to load PDF:", e);
+            } finally {
+                setLoadingPdf(false);
             }
         };
         loadPdf();
@@ -166,13 +170,40 @@ const AnalysisView = ({ doc, results, onBack }) => {
                     </div>
 
                     {/* Document Content */}
-                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-100">
-                        <div className="max-w-[800px] mx-auto bg-white min-h-[1000px] shadow-sm border border-slate-200 p-12 rounded-sm font-serif text-lg leading-relaxed text-slate-800 whitespace-pre-wrap relative">
-                            {/* Text Layer */}
-                            <div className="relative z-10">
-                                {doc.extracted_text || <div className="text-center text-slate-400 italic mt-20">No printable text content found.</div>}
+                    <div className="flex-1 overflow-hidden bg-slate-100">
+                        {loadingPdf ? (
+                            /* Loading State */
+                            <div className="h-full flex items-center justify-center">
+                                <div className="text-center">
+                                    <Loader2 className="h-12 w-12 text-indigo-500 mx-auto mb-4 animate-spin" />
+                                    <p className="text-slate-600 font-medium">Loading document...</p>
+                                    <p className="text-slate-400 text-sm mt-1">Please wait</p>
+                                </div>
                             </div>
-                        </div>
+                        ) : pdfUrl ? (
+                            /* PDF Viewer */
+                            <iframe
+                                src={pdfUrl}
+                                className="w-full h-full border-0"
+                                title="Document Viewer"
+                            />
+                        ) : doc.extracted_text ? (
+                            /* Text Fallback */
+                            <div className="h-full overflow-y-auto p-8 custom-scrollbar">
+                                <div className="max-w-[800px] mx-auto bg-white min-h-[1000px] shadow-sm border border-slate-200 p-12 rounded-sm font-serif text-lg leading-relaxed text-slate-800 whitespace-pre-wrap">
+                                    {doc.extracted_text}
+                                </div>
+                            </div>
+                        ) : (
+                            /* Error State */
+                            <div className="h-full flex items-center justify-center">
+                                <div className="text-center">
+                                    <AlertTriangle className="h-16 w-16 text-amber-400 mx-auto mb-4" />
+                                    <p className="text-slate-600 font-medium mb-2">Failed to load document</p>
+                                    <p className="text-slate-400 text-sm">The document could not be displayed</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
