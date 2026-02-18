@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, BrainCircuit, ShieldAlert, Scale, CheckCircle2,
     Highlighter, Info, Copy, FileText, ChevronRight, AlertTriangle,
-    Activity, Save, CheckCircle, Loader2
+    Activity, Save, CheckCircle, Loader2, Download
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -16,12 +16,19 @@ const AnalysisView = ({ doc, results, onBack }) => {
     const [scores, setScores] = useState({});
     const [rubricCriteria, setRubricCriteria] = useState([]);
     const [pdfUrl, setPdfUrl] = useState(null);
-    const [loadingPdf, setLoadingPdf] = useState(true);
+    const [loadingPdf, setLoadingPdf] = useState(false);
 
-    // Always fetch PDF for viewing
+    // Only fetch PDF blob for PDF files
     useEffect(() => {
         const loadPdf = async () => {
             if (!doc) return;
+            
+            // Only load PDF for PDF files, not DOCX/TXT
+            const isPdf = doc.file_type === 'pdf' || doc.content_type === 'application/pdf';
+            if (!isPdf) {
+                setLoadingPdf(false);
+                return;
+            }
             
             try {
                 setLoadingPdf(true);
@@ -152,8 +159,17 @@ const AnalysisView = ({ doc, results, onBack }) => {
                     <div className="h-12 bg-white border-b border-slate-200 flex items-center px-4 justify-between shrink-0">
                         <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
                             <FileText size={16} /> Document Viewer
+                            <span className="text-xs text-slate-400">({doc.file_type?.toUpperCase()})</span>
                         </div>
                         <div className="flex gap-2">
+                            <a
+                                href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/documents/${doc._id || doc.id}/view`}
+                                download={doc.original_filename}
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border bg-white border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                                title="Download document"
+                            >
+                                <Download size={12} /> Download
+                            </a>
                             <button
                                 onClick={() => setShowGrammar(!showGrammar)}
                                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${showGrammar ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-500'}`}
@@ -172,25 +188,33 @@ const AnalysisView = ({ doc, results, onBack }) => {
                     {/* Document Content */}
                     <div className="flex-1 overflow-hidden bg-slate-100">
                         {loadingPdf ? (
-                            /* Loading State */
+                            /* Loading State (only for PDFs) */
                             <div className="h-full flex items-center justify-center">
                                 <div className="text-center">
                                     <Loader2 className="h-12 w-12 text-indigo-500 mx-auto mb-4 animate-spin" />
-                                    <p className="text-slate-600 font-medium">Loading document...</p>
+                                    <p className="text-slate-600 font-medium">Loading PDF...</p>
                                     <p className="text-slate-400 text-sm mt-1">Please wait</p>
                                 </div>
                             </div>
                         ) : pdfUrl ? (
-                            /* PDF Viewer */
+                            /* PDF Viewer - Only for PDF files */
                             <iframe
                                 src={pdfUrl}
                                 className="w-full h-full border-0"
                                 title="Document Viewer"
                             />
                         ) : doc.extracted_text ? (
-                            /* Text Fallback */
+                            /* Text Viewer - For DOCX, TXT and fallback */
                             <div className="h-full overflow-y-auto p-8 custom-scrollbar">
                                 <div className="max-w-[800px] mx-auto bg-white min-h-[1000px] shadow-sm border border-slate-200 p-12 rounded-sm font-serif text-lg leading-relaxed text-slate-800 whitespace-pre-wrap">
+                                    {(doc.file_type === 'docx' || doc.file_type === 'txt') && (
+                                        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <p className="text-sm text-blue-800 flex items-center gap-2">
+                                                <Info size={16} />
+                                                <span>Viewing extracted text from <strong>{doc.file_type?.toUpperCase()}</strong> file. Click "Download" above to get the original file.</span>
+                                            </p>
+                                        </div>
+                                    )}
                                     {doc.extracted_text}
                                 </div>
                             </div>
@@ -199,8 +223,15 @@ const AnalysisView = ({ doc, results, onBack }) => {
                             <div className="h-full flex items-center justify-center">
                                 <div className="text-center">
                                     <AlertTriangle className="h-16 w-16 text-amber-400 mx-auto mb-4" />
-                                    <p className="text-slate-600 font-medium mb-2">Failed to load document</p>
-                                    <p className="text-slate-400 text-sm">The document could not be displayed</p>
+                                    <p className="text-slate-600 font-medium mb-2">No content available</p>
+                                    <p className="text-slate-400 text-sm mb-4">Text extraction may have failed</p>
+                                    <a
+                                        href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/documents/${doc._id || doc.id}/view`}
+                                        download={doc.original_filename}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                                    >
+                                        <Download size={16} /> Download Original File
+                                    </a>
                                 </div>
                             </div>
                         )}
