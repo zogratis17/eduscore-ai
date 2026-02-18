@@ -128,7 +128,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       
       # Firebase (from .env file)
-      ENABLE_MOCK_AUTH: "false"
+      ENABLE_MOCK_AUTH: "true"
       FIREBASE_TYPE: ${FIREBASE_TYPE}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
       FIREBASE_PRIVATE_KEY_ID: ${FIREBASE_PRIVATE_KEY_ID}
@@ -259,7 +259,7 @@ services:
       - "5173:5173"
     environment:
       VITE_API_URL: http://localhost:8000/api/v1
-      VITE_USE_MOCK_AUTH: "false"
+      VITE_USE_MOCK_AUTH: "true"
     volumes:
       - ./frontend:/app
       - /app/node_modules
