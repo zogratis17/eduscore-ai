@@ -56,6 +56,7 @@ async def upload_document(
     file: UploadFile = File(...),
     prompt: Optional[str] = Form(None),
     rubric_id: Optional[str] = Form(None),
+    grading_mode: str = Form("suggested"),
     db: AsyncIOMotorDatabase = Depends(get_database),
     current_user: dict = Depends(get_current_user)
 ) -> Any:
@@ -102,7 +103,8 @@ async def upload_document(
         storage_path=storage_path,
         status="pending",
         prompt=prompt,
-        rubric_id=rubric_id
+        rubric_id=rubric_id,
+        grading_mode=grading_mode
     )
 
     # Insert into MongoDB
@@ -155,4 +157,39 @@ async def delete_document(
     # Clean up plagiarism corpus — remove the fingerprint so re-uploads don't ghost-match
     await db["plagiarism_hashes"].delete_one({"document_id": document_id})
     
+    # Clean up plagiarism corpus — remove the fingerprint so re-uploads don't ghost-match
+    await db["plagiarism_hashes"].delete_one({"document_id": document_id})
+    
     return None
+
+from fastapi.responses import FileResponse
+
+@router.get("/{document_id}/view")
+async def view_document(
+    document_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: dict = Depends(get_current_user)
+) -> Any:
+    """
+    Stream the document file for viewing/downloading.
+    """
+    doc = await db["documents"].find_one({"_id": ObjectId(document_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    if doc["uploaded_by"] != str(current_user["_id"]) and current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to access this document")
+    
+    file_path = doc.get("storage_path")
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found on server")
+        
+    # Determine media type
+    media_type = doc.get("content_type", "application/octet-stream")
+    filename = doc.get("original_filename", "document")
+    
+    return FileResponse(
+        path=file_path, 
+        media_type=media_type, 
+        filename=filename
+    )

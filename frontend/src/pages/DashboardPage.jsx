@@ -86,26 +86,24 @@ const DashboardPage = () => {
 
   // Poll for updates if any documents are processing
   useEffect(() => {
-    const hasPending = documents.some(doc =>
-      doc.status === 'processing' || doc.status === 'pending'
+    // Poll if any doc is pending/processing OR if we just uploaded (to catch new ones)
+    // We can just poll every 10s generally, or 5s if active.
+    const hasActive = documents.some(doc =>
+      ['pending', 'processing'].includes(doc.status)
     );
 
-    let intervalId;
-    if (hasPending) {
-      intervalId = setInterval(() => {
-        fetchDashboardData(true);
-      }, 5000);
-    }
+    const intervalId = setInterval(() => {
+      fetchDashboardData(true);
+    }, hasActive ? 3000 : 10000); // 3s if active, 10s idle
 
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [documents]);
+    return () => clearInterval(intervalId);
+  }, [documents.length]); // Re-bind if list length changes (e.g. new upload), but not on status change to avoid jitter
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
+      case 'graded': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'evaluated': return 'bg-amber-100 text-amber-800 border-amber-200'; // Needs Review
       case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'evaluated': return 'bg-green-100 text-green-800 border-green-200';
       case 'processing': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200';
       case 'failed':
@@ -116,14 +114,21 @@ const DashboardPage = () => {
 
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
-      case 'completed':
-      case 'evaluated': return <CheckCircle2 className="h-3 w-3 mr-1" />;
+      case 'graded': return <CheckCircle2 className="h-3 w-3 mr-1" />;
+      case 'evaluated': return <AlertCircle className="h-3 w-3 mr-1" />; // Needs Review
+      case 'completed': return <CheckCircle2 className="h-3 w-3 mr-1" />;
       case 'processing': return <Clock className="h-3 w-3 mr-1 animate-spin" />;
       case 'pending': return <Clock className="h-3 w-3 mr-1" />;
       case 'failed':
       case 'failed_evaluation': return <AlertCircle className="h-3 w-3 mr-1" />;
       default: return null;
     }
+  };
+
+  const getStatusLabel = (status) => {
+    if (status === 'evaluated') return 'Needs Review';
+    if (status === 'graded') return 'Graded';
+    return status;
   };
 
   return (
@@ -235,18 +240,22 @@ const DashboardPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(doc.status)}`}>
                         {getStatusIcon(doc.status)}
-                        {doc.status === 'pending' ? 'Queued' : doc.status}
+                        {getStatusLabel(doc.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {doc.final_score !== undefined && doc.final_score !== null ? doc.final_score : '-'}
+                      {doc.status === 'graded' ? (
+                        <span className="text-indigo-600 font-bold">{doc.final_score}</span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
-                        to={(doc.status === 'evaluated' || doc.status === 'completed') ? `/results/${doc._id}` : '#'}
-                        className="text-primary-600 hover:text-primary-900 mr-4"
+                        to={`/results/${doc._id}`}
+                        className={`mr-4 ${doc.status === 'evaluated' ? 'text-amber-600 font-bold hover:text-amber-700' : 'text-primary-600 hover:text-primary-900'}`}
                       >
-                        View
+                        {doc.status === 'evaluated' ? 'Review Grade' : 'View'}
                       </Link>
                       <button className="text-gray-400 hover:text-gray-500">
                         <MoreVertical className="h-5 w-5" />

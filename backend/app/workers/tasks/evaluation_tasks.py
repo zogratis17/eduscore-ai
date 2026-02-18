@@ -131,16 +131,25 @@ def evaluate_document_task(self, document_id: str):
             loop.close()
 
         # 3. Save Evaluation
+        grading_mode = doc.get("grading_mode", "suggested")
+        is_auto = grading_mode == "auto"
+        
+        eval_status = "finalized" if is_auto else "pending_review"
+        final_score = results["final_score"]
+        
         eval_in = Evaluation(
             document_id=document_id,
             user_id=doc.get("uploaded_by"),
-            final_score=results["final_score"],
+            final_score=final_score,
             grade=results["grade"],
             components=results["components"],
             overall_feedback=results["overall_feedback"],
             score_breakdown=results.get("score_breakdown"),
             scoring_engine=results.get("scoring_engine", "unknown"),
             rubric_used=results.get("rubric_used", "Default"),
+            status=eval_status,
+            finalized_at=datetime.utcnow() if is_auto else None,
+            finalized_by="system" if is_auto else None
         )
 
         eval_collection.replace_one(
@@ -150,12 +159,15 @@ def evaluate_document_task(self, document_id: str):
         )
 
         # 4. Update Document Status
+        # If auto, it's 'graded' (done). If suggested, it's 'evaluated' (needs review).
+        doc_status = "graded" if is_auto else "evaluated"
+        
         doc_collection.update_one(
             {"_id": ObjectId(document_id)},
             {
                 "$set": {
-                    "status": "evaluated",
-                    "final_score": results["final_score"],
+                    "status": doc_status,
+                    "final_score": final_score if is_auto else None, # Only set final_score on doc if auto
                     "updated_at": datetime.utcnow(),
                 }
             },

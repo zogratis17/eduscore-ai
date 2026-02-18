@@ -4,6 +4,7 @@ import {
     Highlighter, Info, Copy, FileText, ChevronRight, AlertTriangle,
     Activity, Save, CheckCircle
 } from 'lucide-react';
+import api from '../../services/api';
 
 const AnalysisView = ({ doc, results, onBack }) => {
     const [activeTab, setActiveTab] = useState('rubric');
@@ -14,6 +15,29 @@ const AnalysisView = ({ doc, results, onBack }) => {
     // Initialize from results or default
     const [scores, setScores] = useState({});
     const [rubricCriteria, setRubricCriteria] = useState([]);
+    const [pdfUrl, setPdfUrl] = useState(null);
+
+    // Fetch PDF blob if text is missing
+    useEffect(() => {
+        const loadPdf = async () => {
+            if (doc && !doc.extracted_text) {
+                try {
+                    const docId = doc._id || doc.id;
+                    const response = await api.get(`/documents/${docId}/view`, { responseType: 'blob' });
+                    const url = URL.createObjectURL(response.data);
+                    setPdfUrl(url);
+                } catch (e) {
+                    console.error("Failed to load PDF:", e);
+                }
+            }
+        };
+        loadPdf();
+
+        // Cleanup
+        return () => {
+            if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+        };
+    }, [doc]);
 
     useEffect(() => {
         if (results?.score_breakdown?.weighted_components) {
@@ -64,6 +88,23 @@ const AnalysisView = ({ doc, results, onBack }) => {
     // Since we don't have robust offset mapping in frontend JS yet, we'll render plain text 
     // but list the errors effectively.
 
+    const handleFinalize = async () => {
+        try {
+            const finalScore = calculateTotalScore();
+            // Use _id if available (Mongo default), fallback to id
+            const docId = doc._id || doc.id;
+            await api.post(`/evaluation/results/${docId}/finalize`, {
+                final_score: parseFloat(finalScore),
+                overrides: scores
+            });
+            // Go back to dashboard after saving
+            onBack();
+        } catch (error) {
+            console.error("Failed to finalize grade:", error);
+            alert("Failed to save grade. Please try again.");
+        }
+    };
+
     return (
         <div className="flex flex-col h-full bg-slate-100 overflow-hidden">
             {/* Header */}
@@ -89,7 +130,10 @@ const AnalysisView = ({ doc, results, onBack }) => {
                         <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Current Grade</span>
                         <span className="text-2xl font-bold text-indigo-600">{calculateTotalScore()}<span className="text-lg text-slate-400 font-normal">/100</span></span>
                     </div>
-                    <button className="px-5 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-shadow shadow-sm hover:shadow-md flex items-center gap-2">
+                    <button
+                        onClick={handleFinalize}
+                        className="px-5 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-shadow shadow-sm hover:shadow-md flex items-center gap-2"
+                    >
                         <Save size={16} /> Finalize Grade
                     </button>
                 </div>
@@ -123,62 +167,11 @@ const AnalysisView = ({ doc, results, onBack }) => {
 
                     {/* Document Content */}
                     <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-100">
-                        <div className="max-w-[800px] mx-auto bg-white min-h-[1000px] shadow-sm border border-slate-200 p-12 rounded-sm font-serif text-lg leading-relaxed text-slate-800 whitespace-pre-wrap">
-                            {showGrammar && grammar?.errors?.length > 0 ? (
-                                (() => {
-                                    // Highlighting Logic
-                                    const text = doc.extracted_text || "";
-                                    const errors = [...(grammar.errors || [])].sort((a, b) => a.offset - b.offset);
-
-                                    const chunks = [];
-                                    let lastIndex = 0;
-
-                                    errors.forEach((err, i) => {
-                                        // Safety check for bounds
-                                        if (err.offset < lastIndex) return; // Skip overlaps for now
-                                        if (err.offset >= text.length) return;
-
-                                        // Text before error
-                                        if (err.offset > lastIndex) {
-                                            chunks.push(<span key={`text-${i}`}>{text.slice(lastIndex, err.offset)}</span>);
-                                        }
-
-                                        // Error text
-                                        const end = Math.min(err.offset + err.length, text.length);
-                                        const errorText = text.slice(err.offset, end);
-
-                                        chunks.push(
-                                            <span
-                                                key={`err-${i}`}
-                                                className="bg-red-50 border-b-2 border-red-400 cursor-help relative group"
-                                            >
-                                                {errorText}
-                                                {/* Tooltip */}
-                                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
-                                                    <span className="font-bold block text-red-300 mb-1">Grammar Issue</span>
-                                                    {err.message}
-                                                    {err.replacements && err.replacements.length > 0 && (
-                                                        <span className="block mt-1 text-emerald-300">
-                                                            Try: {err.replacements.map(r => r.value).slice(0, 3).join(", ")}
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            </span>
-                                        );
-
-                                        lastIndex = end;
-                                    });
-
-                                    // Remaining text
-                                    if (lastIndex < text.length) {
-                                        chunks.push(<span key="text-end">{text.slice(lastIndex)}</span>);
-                                    }
-
-                                    return chunks;
-                                })()
-                            ) : (
-                                doc.extracted_text || <div className="text-center text-slate-400 italic mt-20">No printable text content found in this document.</div>
-                            )}
+                        <div className="max-w-[800px] mx-auto bg-white min-h-[1000px] shadow-sm border border-slate-200 p-12 rounded-sm font-serif text-lg leading-relaxed text-slate-800 whitespace-pre-wrap relative">
+                            {/* Text Layer */}
+                            <div className="relative z-10">
+                                {doc.extracted_text || <div className="text-center text-slate-400 italic mt-20">No printable text content found.</div>}
+                            </div>
                         </div>
                     </div>
                 </div>

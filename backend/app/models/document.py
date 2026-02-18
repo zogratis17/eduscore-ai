@@ -22,6 +22,7 @@ class Document(BaseModel):
     
     prompt: Optional[str] = None # New field for topic relevance
     rubric_id: Optional[str] = None # Selected rubric for evaluation
+    grading_mode: str = Field(default="suggested") # 'auto' or 'suggested'
     
     # Processing status
     status: str = Field(default="pending", index=True) # pending, processing, completed, failed

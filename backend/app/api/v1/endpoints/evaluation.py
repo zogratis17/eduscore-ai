@@ -2,6 +2,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
+from pydantic import BaseModel
+from datetime import datetime
 
 from app.db.mongodb import get_database
 from app.api.deps import get_current_user
@@ -67,4 +69,52 @@ async def get_evaluation_results(
     evaluation["id"] = str(evaluation["_id"])
     del evaluation["_id"]
     
+    
     return evaluation
+
+class FinalizeRequest(BaseModel):
+    final_score: float
+    overrides: dict
+
+@router.post("/results/{document_id}/finalize")
+async def finalize_evaluation(
+    document_id: str,
+    data: FinalizeRequest,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: dict = Depends(get_current_user)
+) -> Any:
+    """
+    Finalize the grade for a document.
+    """
+    # 1. Verify Document Ownership
+    doc = await db["documents"].find_one({"_id": ObjectId(document_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    if doc["uploaded_by"] != str(current_user["_id"]) and current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to grade this document")
+
+    # 2. Update Evaluation
+    # We update the existing evaluation or create one if somehow missing (Upsert)
+    start_time = datetime.utcnow()
+    
+    await db["evaluations"].update_one(
+        {"document_id": document_id},
+        {"$set": {
+            "document_id": document_id,  # Ensure this is set on insert
+            "final_score": data.final_score,
+            "overrides": data.overrides,
+            "status": "finalized",
+            "finalized_at": start_time,
+            "finalized_by": str(current_user["_id"])
+        }},
+        upsert=True
+    )
+    
+    # 3. Update Document Status
+    await db["documents"].update_one(
+        {"_id": ObjectId(document_id)},
+        {"$set": {"status": "graded"}}
+    )
+    
+    return {"message": "Grade finalized successfully", "final_score": data.final_score}

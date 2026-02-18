@@ -11,6 +11,7 @@ const UploadPage = () => {
   const [uploadStatus, setUploadStatus] = useState(null); // 'success' | 'error'
   const [selectedRubricId, setSelectedRubricId] = useState(null);
   const [prompt, setPrompt] = useState('');
+  const [gradingMode, setGradingMode] = useState('suggested');
   const navigate = useNavigate();
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -53,6 +54,7 @@ const UploadPage = () => {
         if (prompt.trim()) {
           formData.append('prompt', prompt.trim());
         }
+        formData.append('grading_mode', gradingMode);
 
         const response = await api.post('/documents/upload', formData, {
           headers: {
@@ -107,6 +109,44 @@ const UploadPage = () => {
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
         />
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="e.g., Discuss the impact of artificial intelligence on modern healthcare..."
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+        />
+      </div>
+
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">3. Grading Preference</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div
+            onClick={() => setGradingMode('suggested')}
+            className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${gradingMode === 'suggested' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${gradingMode === 'suggested' ? 'border-indigo-600' : 'border-gray-400'}`}>
+                {gradingMode === 'suggested' && <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />}
+              </div>
+              <span className="font-semibold text-gray-900">Suggested Scoring</span>
+            </div>
+            <p className="text-sm text-gray-500 ml-8">AI suggests detailed feedback and scores, but you finalize the grade via slider adjustment.</p>
+          </div>
+
+          <div
+            onClick={() => setGradingMode('auto')}
+            className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${gradingMode === 'auto' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${gradingMode === 'auto' ? 'border-indigo-600' : 'border-gray-400'}`}>
+                {gradingMode === 'auto' && <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />}
+              </div>
+              <span className="font-semibold text-gray-900">AI Auto-Grading</span>
+            </div>
+            <p className="text-sm text-gray-500 ml-8">AI automatically calculates and locks the grade based on the rubric. Best for bulk tasks.</p>
+          </div>
+        </div>
       </div>
 
       <div
