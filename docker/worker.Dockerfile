@@ -9,6 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # 4. Install system dependencies
+# Including LibreOffice for DOCX to PDF conversion in background workers
 RUN apt-get update && apt-get install -y \
     gcc \
     python3-dev \
@@ -16,6 +17,9 @@ RUN apt-get update && apt-get install -y \
     libmagic1 \
     poppler-utils \
     tesseract-ocr \
+    libreoffice-writer \
+    libreoffice-core \
+    default-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # 5. Install Python dependencies

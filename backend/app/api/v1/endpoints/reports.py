@@ -1,4 +1,5 @@
 from typing import Any
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Response
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
@@ -6,6 +7,8 @@ from bson import ObjectId
 from app.db.mongodb import get_database
 from app.api.deps import get_current_user
 from app.services.report_generator import report_generator
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -38,7 +41,7 @@ async def get_pdf_report(
     try:
         pdf_bytes = report_generator.generate_pdf(evaluation, doc)
     except Exception as e:
-        print(f"Error generating PDF: {e}")
+        logger.error(f"Error generating PDF: {e}")
         raise HTTPException(status_code=500, detail="Could not generate PDF report")
 
     # 4. Return Response

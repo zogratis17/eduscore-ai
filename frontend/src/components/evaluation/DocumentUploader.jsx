@@ -63,7 +63,7 @@ const DocumentUploader = ({ onUploadSuccess }) => {
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept=".pdf,.docx,.txt"
+          accept=".pdf,.docx,.doc,.txt"
           className="hidden"
           id="file-upload"
         />
@@ -72,7 +72,7 @@ const DocumentUploader = ({ onUploadSuccess }) => {
             {file ? (
               <span className="font-medium text-blue-600">{file.name}</span>
             ) : (
-              <span>Drag & drop or click to browse (PDF, DOCX, TXT)</span>
+              <span>Drag & drop or click to browse (PDF, DOCX, DOC, TXT)</span>
             )}
           </div>
           <div className="text-xs text-gray-400">Max size: 25MB</div>

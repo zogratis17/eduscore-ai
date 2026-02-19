@@ -11,6 +11,11 @@ Before you begin, ensure you have the following installed:
 1.  **Docker Desktop** (with WSL 2 integration enabled if on Windows)
 2.  **Git**
 
+**For Local Development (non-Docker):**
+- **LibreOffice** (for automatic DOCX to PDF conversion)
+  - Download from: https://www.libreoffice.org/download/
+  - The system will auto-detect the installation
+
 ### 🛠️ Installation & Setup
 
 1.  **Clone the Repository**
@@ -47,11 +52,21 @@ Before you begin, ensure you have the following installed:
 ### 📝 How to Use
 
 1.  **Login:** Click "Login" (Mock login is enabled, any credentials work).
-2.  **Upload:** Go to "New Evaluation", drag & drop a PDF/DOCX/TXT file (e.g., an essay).
+2.  **Upload:** Go to "New Evaluation", drag & drop a PDF/DOCX/DOC/TXT file (e.g., an essay).
+    *   **Note:** DOCX and DOC files are automatically converted to PDF for consistent viewing.
 3.  **Wait:** The file will be uploaded and processed.
     *   **Status: Completed** (Blue) -> File text extracted.
     *   **Status: Evaluated** (Green) -> AI analysis done.
 4.  **View Results:** Click the "View" icon on the dashboard to see the score, grammar feedback, and other insights.
+
+### ✨ Features
+
+- **Automatic Format Conversion**: DOCX and DOC files are automatically converted to PDF for optimal viewing
+- **AI-Powered Scoring**: Automated essay evaluation with detailed feedback
+*   **DOCX Conversion Fails:** LibreOffice is automatically included in Docker. For local development, install LibreOffice manually.
+- **Multiple File Formats**: Support for PDF, DOCX, DOC, and TXT files
+- **Real-time Analysis**: Grammar, coherence, plagiarism, and vocabulary analysis
+- **Document Viewer**: Built-in PDF viewer for reviewing uploaded documents
 
 ### 🛑 Troubleshooting
 
@@ -65,4 +80,7 @@ Before you begin, ensure you have the following installed:
 *   **Backend:** FastAPI (Python)
 *   **Database:** MongoDB
 *   **Queue:** Redis + Celery
+*   **Document Processing:** LibreOffice (DOCX to PDF conversion)
+
+For detailed information about DOCX to PDF conversion, see [docs/DOCX_TO_PDF_CONVERSION.md](docs/DOCX_TO_PDF_CONVERSION.md).
 *   **AI Engine:** LanguageTool + Custom Logic

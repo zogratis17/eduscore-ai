@@ -24,6 +24,9 @@ async def trigger_evaluation(
     """
     Trigger evaluation for a specific document.
     """
+    if not ObjectId.is_valid(document_id):
+        raise HTTPException(status_code=400, detail="Invalid document ID format")
+    
     # 1. Verify Document Ownership
     doc = await db["documents"].find_one({"_id": ObjectId(document_id)})
     if not doc:
@@ -50,6 +53,9 @@ async def get_evaluation_results(
     """
     Get evaluation results for a document.
     """
+    if not ObjectId.is_valid(document_id):
+        raise HTTPException(status_code=400, detail="Invalid document ID format")
+    
     # 1. Verify Document Ownership (or if user has access)
     doc = await db["documents"].find_one({"_id": ObjectId(document_id)})
     if not doc:
@@ -86,6 +92,9 @@ async def finalize_evaluation(
     """
     Finalize the grade for a document.
     """
+    if not ObjectId.is_valid(document_id):
+        raise HTTPException(status_code=400, detail="Invalid document ID format")
+    
     # 1. Verify Document Ownership
     doc = await db["documents"].find_one({"_id": ObjectId(document_id)})
     if not doc:

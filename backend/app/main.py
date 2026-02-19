@@ -1,12 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 from app.core.config import settings
 from app.db.mongodb import connect_to_mongo, close_mongo_connection
 from app.api.v1.api import api_router
 from app.workers.celery_app import celery_app  # Import to initialize Celery config
 
-print(f"DEBUG: settings.REDIS_URL = {settings.REDIS_URL}")
-print(f"DEBUG: settings.BACKEND_CORS_ORIGINS = {settings.BACKEND_CORS_ORIGINS}")
+logger = logging.getLogger(__name__)
+logger.info(f"REDIS_URL = {settings.REDIS_URL}")
+logger.info(f"BACKEND_CORS_ORIGINS = {settings.BACKEND_CORS_ORIGINS}")
 
 app = FastAPI(title=settings.PROJECT_NAME)
 

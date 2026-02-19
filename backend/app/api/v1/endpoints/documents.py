@@ -1,4 +1,5 @@
 from typing import Any, List, Optional
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import os
@@ -8,8 +9,11 @@ from app.db.mongodb import get_database
 from app.models.document import Document
 from app.schemas.document import DocumentResponse
 from app.services.storage_service import storage_service
+from app.services.document_converter import document_converter
 from app.api.deps import get_current_user
 from app.workers.tasks.document_tasks import process_uploaded_document
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -17,6 +21,7 @@ router = APIRouter()
 ALLOWED_MIME_TYPES = {
     "application/pdf": "pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/msword": "doc",  # Legacy .doc format
     "text/plain": "txt"
 }
 MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB
@@ -42,6 +47,9 @@ async def get_document(
     """
     Get a specific document by ID.
     """
+    if not ObjectId.is_valid(document_id):
+        raise HTTPException(status_code=400, detail="Invalid document ID format")
+    
     doc = await db["documents"].find_one({"_id": ObjectId(document_id)})
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -76,10 +84,41 @@ async def upload_document(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not save file: {str(e)}")
 
-    # 3. Create Database Record
-    file_type = ALLOWED_MIME_TYPES[file.content_type]
+    # 3. Convert DOCX/DOC to PDF if needed
+    original_file_type = ALLOWED_MIME_TYPES[file.content_type]
+    converted_to_pdf = False
     
-    # Get file size safely and validate
+    if original_file_type in ['docx', 'doc']:
+        try:
+            # Convert DOCX to PDF
+            pdf_path = document_converter.convert_docx_to_pdf(storage_path)
+            
+            # Remove the original DOCX file
+            storage_service.delete_file(storage_path)
+            
+            # Update storage path to the PDF
+            storage_path = pdf_path
+            file_type = 'pdf'
+            content_type = 'application/pdf'
+            converted_to_pdf = True
+            
+            # Update filename to reflect PDF extension
+            filename_without_ext = os.path.splitext(file.filename)[0]
+            pdf_filename = f"{filename_without_ext}.pdf"
+            
+        except Exception as e:
+            # If conversion fails, clean up and return error
+            storage_service.delete_file(storage_path)
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to convert DOCX to PDF: {str(e)}. Please ensure LibreOffice is installed."
+            )
+    else:
+        file_type = original_file_type
+        content_type = file.content_type
+        pdf_filename = file.filename
+    
+    # 4. Get file size and validate
     try:
         file_size = os.path.getsize(storage_path)
         if file_size > MAX_FILE_SIZE:
@@ -92,12 +131,13 @@ async def upload_document(
     except OSError:
         file_size = 0
 
+    # 5. Create Database Record
     doc_in = Document(
         uploaded_by=str(current_user["_id"]), 
         institution_id=current_user.get("institution_id"),
-        filename=file.filename,
+        filename=pdf_filename,
         original_filename=file.filename,
-        content_type=file.content_type,
+        content_type=content_type,
         file_type=file_type,
         file_size_bytes=file_size,
         storage_path=storage_path,
@@ -130,6 +170,9 @@ async def delete_document(
     """
     Delete a document.
     """
+    if not ObjectId.is_valid(document_id):
+        raise HTTPException(status_code=400, detail="Invalid document ID format")
+    
     doc = await db["documents"].find_one({"_id": ObjectId(document_id)})
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -146,7 +189,7 @@ async def delete_document(
             storage_service.delete_file(doc["storage_path"])
         except Exception as e:
             # Log error but proceed with DB deletion
-            print(f"Error deleting file from storage: {e}")
+            logger.error(f"Error deleting file from storage: {e}")
 
     # Delete from Database
     await db["documents"].delete_one({"_id": ObjectId(document_id)})
@@ -154,9 +197,6 @@ async def delete_document(
     # Also delete evaluations
     await db["evaluations"].delete_many({"document_id": document_id})
 
-    # Clean up plagiarism corpus — remove the fingerprint so re-uploads don't ghost-match
-    await db["plagiarism_hashes"].delete_one({"document_id": document_id})
-    
     # Clean up plagiarism corpus — remove the fingerprint so re-uploads don't ghost-match
     await db["plagiarism_hashes"].delete_one({"document_id": document_id})
     
@@ -173,6 +213,9 @@ async def view_document(
     """
     Stream the document file for viewing/downloading.
     """
+    if not ObjectId.is_valid(document_id):
+        raise HTTPException(status_code=400, detail="Invalid document ID format")
+    
     doc = await db["documents"].find_one({"_id": ObjectId(document_id)})
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")

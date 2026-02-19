@@ -16,6 +16,8 @@ WORKDIR /app
 # libmagic1: Required for python-magic
 # poppler-utils: For PDF processing
 # tesseract-ocr: For OCR (FR-2.3)
+# libreoffice-writer: For DOCX to PDF conversion
+# default-jre-headless: Required by LibreOffice headless mode
 RUN apt-get update && apt-get install -y \
     gcc \
     python3-dev \
@@ -23,6 +25,9 @@ RUN apt-get update && apt-get install -y \
     libmagic1 \
     poppler-utils \
     tesseract-ocr \
+    libreoffice-writer \
+    libreoffice-core \
+    default-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # 5. Install Python dependencies

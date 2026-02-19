@@ -2,6 +2,7 @@ import logging
 import re
 import pickle
 from typing import Dict, Any, List, Set
+from datetime import datetime
 from datasketch import MinHash, MinHashLSH
 from app.core.config import settings
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -88,7 +89,7 @@ class PlagiarismDetector:
             {"$set": {
                 "document_id": doc_id, 
                 "signature": signature_blob,
-                "updated_at": settings.PROJECT_NAME # timestamp placeholder or util
+                "updated_at": datetime.utcnow()
             }},
             upsert=True
         )

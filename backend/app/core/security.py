@@ -4,6 +4,9 @@ from firebase_admin import auth, credentials, initialize_app
 from typing import Optional
 import os
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Initialize Firebase Admin SDK
 firebase_app = None
@@ -11,12 +14,12 @@ try:
     # 1. Try to load from JSON file (Most Reliable)
     json_path = "/app/firebase-credentials.json"
     if os.path.exists(json_path):
-        print(f"Loading Firebase credentials from {json_path}")
+        logger.info(f"Loading Firebase credentials from {json_path}")
         cred = credentials.Certificate(json_path)
         firebase_app = initialize_app(cred)
     else:
         # 2. Fallback to Environment Variables
-        print("Loading Firebase credentials from Environment Variables")
+        logger.info("Loading Firebase credentials from Environment Variables")
         # Handle Private Key Newlines
         private_key = os.getenv("FIREBASE_PRIVATE_KEY")
         if private_key:
@@ -36,10 +39,10 @@ try:
         })
         firebase_app = initialize_app(cred)
         
-    print("Firebase Admin SDK initialized successfully.")
+    logger.info("Firebase Admin SDK initialized successfully.")
     
 except Exception as e:
-    print(f"WARNING: Firebase Admin SDK could not be initialized: {e}")
+    logger.warning(f"Firebase Admin SDK could not be initialized: {e}")
     firebase_app = None
 
 security = HTTPBearer()
@@ -88,21 +91,21 @@ class FirebaseAuth:
             return decoded_token
             
         except auth.InvalidIdTokenError as e:
-            print(f"DEBUG: InvalidIdTokenError: {e}")
+            logger.debug(f"InvalidIdTokenError: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         except auth.ExpiredIdTokenError as e:
-            print(f"DEBUG: ExpiredIdTokenError: {e}")
+            logger.debug(f"ExpiredIdTokenError: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has expired",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         except Exception as e:
-            print(f"DEBUG: Token Verification Failed: {e}")
+            logger.debug(f"Token Verification Failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Could not validate credentials: {str(e)}",
