@@ -33,8 +33,8 @@ async def trigger_evaluation(
         raise HTTPException(status_code=403, detail="Not authorized to evaluate this document")
         
     # 2. Check Status
-    if doc.get("status") == "pending":
-         raise HTTPException(status_code=400, detail="Document is still processing. Please wait.")
+    if doc.get("status") in ("pending", "processing"):
+         raise HTTPException(status_code=400, detail="Document is still being processed. Please wait.")
     
     # 3. Trigger Task
     evaluate_document_task.delay(document_id)

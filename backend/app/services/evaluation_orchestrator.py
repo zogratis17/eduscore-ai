@@ -12,8 +12,16 @@ logger = logging.getLogger(__name__)
 class EvaluationOrchestrator:
     """
     Coordinator service that runs AI analysis modules on a document.
-    Uses Gemini for vocabulary/coherence/relevance/AI detection, with
-    fallback to legacy statistical analyzers if Gemini is unavailable.
+    
+    Scoring Architecture:
+    - Gemini handles ALL scoring (grammar, vocabulary, coherence, topic_relevance)
+    - LanguageTool provides error spans for the interactive EssayViewer (UI only)
+    - MinHash handles internal plagiarism detection (duplicate submissions)
+    - AI detection is informational only (no score penalty)
+    
+    Penalties:
+    - Plagiarism: additive deductions (not multiplicative)  
+    - Off-topic floor: if relevance < 10, score capped at 25
     """
 
     async def evaluate_document(
@@ -36,19 +44,19 @@ class EvaluationOrchestrator:
 
         logger.info("Starting document evaluation...")
 
-        # ── Step 1: Grammar (LanguageTool — always run) ──
+        # ── Step 1: Grammar Error Spans (LanguageTool — for UI highlighting) ──
         _update("analyzing_grammar")
-        logger.info("Running Grammar Analysis (LanguageTool)...")
-        grammar_result = await grammar_analyzer.analyze(text)
+        logger.info("Running Grammar Analysis (LanguageTool — for error spans)...")
+        lt_grammar_result = await grammar_analyzer.analyze(text)
 
-        # ── Step 2: Plagiarism (MinHash — always run) ──
+        # ── Step 2: Plagiarism (MinHash — internal duplicate detection) ──
         _update("analyzing_plagiarism")
         logger.info("Running Plagiarism Detection (MinHash)...")
         plagiarism_result = plagiarism_detector.check_plagiarism(
             text, exclude_doc_id=document_id
         )
 
-        # ── Step 3: Gemini Evaluation (vocab + coherence + relevance + AI) ──
+        # ── Step 3: Gemini Evaluation (ALL scoring dimensions) ──
         _update("analyzing_with_gemini")
         logger.info("Running Gemini AI Evaluation...")
         gemini_result = await gemini_evaluator.evaluate(text, prompt=prompt)
@@ -62,6 +70,19 @@ class EvaluationOrchestrator:
         scoring_engine = "gemini"
         logger.info("Using Gemini scores for evaluation.")
 
+        # Extract Gemini scores into result dicts
+        # Grammar: use Gemini's holistic score, but keep LanguageTool's error spans for UI
+        grammar_result = {
+            "score": gemini_result["grammar"]["score"],
+            "reasoning": gemini_result["grammar"].get("reasoning", ""),
+            "strengths": gemini_result["grammar"].get("strengths", []),
+            "improvements": gemini_result["grammar"].get("improvements", []),
+            "engine": "gemini",
+            # Preserve LanguageTool error spans for the interactive EssayViewer
+            "errors": lt_grammar_result.get("errors", []),
+            "error_count": lt_grammar_result.get("error_count", 0),
+            "error_rate": lt_grammar_result.get("error_rate", 0),
+        }
         vocab_result = {
             "score": gemini_result["vocabulary"]["score"],
             "reasoning": gemini_result["vocabulary"].get("reasoning", ""),
@@ -93,19 +114,13 @@ class EvaluationOrchestrator:
         # ── Step 4: Score Aggregation ──
         _update("calculating_score")
 
-        # Grammar may be None if LanguageTool was down
-        grammar_score = grammar_result.get("score")
-        grammar_available = grammar_score is not None
-        if not grammar_available:
-            grammar_score = 0  # won't be used in weighting
-            logger.warning("Grammar score unavailable (LanguageTool down). Excluding from weighted score.")
-
+        grammar_score = grammar_result["score"]
         vocab_score = vocab_result["score"]
         coherence_score = coherence_result["score"]
         topic_score = topic_result["score"]
         plagiarism_pct = plagiarism_result["percentage"]
 
-        # Score lookup for criterion matching
+        # Score lookup for rubric criterion matching
         score_map = {
             "grammar": grammar_score,
             "vocabulary": vocab_score,
@@ -113,7 +128,7 @@ class EvaluationOrchestrator:
             "topic_relevance": topic_score,
         }
 
-        # Build weighted components
+        # Build weighted components from rubric (or defaults)
         weighted_components = []
         weighted_score = 0.0
         total_weight_used = 0.0
@@ -122,12 +137,6 @@ class EvaluationOrchestrator:
             logger.info(f"Using Rubric: {rubric.name}")
             for criterion in rubric.criteria:
                 matched_key = self._match_criterion(criterion.name)
-
-                # Skip grammar if unavailable
-                if matched_key == "grammar" and not grammar_available:
-                    logger.info(f"Skipping criterion '{criterion.name}' — grammar unavailable.")
-                    continue
-
                 c_score = score_map.get(matched_key, 0)
                 if matched_key is None:
                     logger.warning(f"Unknown criterion: '{criterion.name}'. Using score 0.")
@@ -144,14 +153,12 @@ class EvaluationOrchestrator:
         else:
             logger.info("No rubric provided. Using default weights.")
             defaults = [
-                ("Grammar", "grammar", 30),
+                ("Grammar", "grammar", 25),
                 ("Vocabulary", "vocabulary", 20),
-                ("Coherence", "coherence", 20),
+                ("Coherence", "coherence", 25),
                 ("Topic Relevance", "topic_relevance", 30),
             ]
             for name, key, weight in defaults:
-                if key == "grammar" and not grammar_available:
-                    continue
                 c_score = score_map[key]
                 contribution = round(c_score * (weight / 100.0), 2)
                 weighted_score += contribution
@@ -163,7 +170,7 @@ class EvaluationOrchestrator:
                     "contribution": contribution,
                 })
 
-        # Normalize if some criteria were skipped (weights don't add to 100)
+        # Normalize if weights don't add to 100 (e.g. custom rubric missing a category)
         if total_weight_used > 0 and total_weight_used < 100:
             scale = 100.0 / total_weight_used
             weighted_score *= scale
@@ -175,44 +182,56 @@ class EvaluationOrchestrator:
         weighted_total = round(weighted_score, 2)
         final_score = weighted_score
 
-        # Apply penalties
+        # ── Apply Penalties (additive, not multiplicative) ──
         penalties = []
 
-        # Plagiarism penalty — single graduated penalty, not stacking
+        # Plagiarism penalty — additive deduction, capped at 40 points
         if plagiarism_pct > 50:
-            deduction = round(final_score * 0.5, 2)
-            final_score *= 0.5
+            deduction = min(40.0, round(plagiarism_pct * 0.4, 2))
+            final_score -= deduction
             penalties.append({
                 "name": "Severe Plagiarism",
-                "detail": f"{plagiarism_pct}% similarity — 50% score reduction",
+                "detail": f"{plagiarism_pct}% similarity — {deduction} point deduction",
                 "deduction": -deduction,
             })
         elif plagiarism_pct > 20:
-            deduction = round(plagiarism_pct * 0.4, 2)
+            deduction = round(plagiarism_pct * 0.3, 2)
             final_score -= deduction
             penalties.append({
                 "name": "Plagiarism",
-                "detail": f"{plagiarism_pct}% similarity detected",
+                "detail": f"{plagiarism_pct}% similarity — {deduction} point deduction",
                 "deduction": -deduction,
             })
         elif plagiarism_pct > 5:
-            deduction = round(plagiarism_pct * 0.2, 2)
+            deduction = round(plagiarism_pct * 0.15, 2)
             final_score -= deduction
             penalties.append({
                 "name": "Minor Similarity",
-                "detail": f"{plagiarism_pct}% similarity detected",
+                "detail": f"{plagiarism_pct}% similarity — {deduction} point deduction",
                 "deduction": -deduction,
             })
         # <= 5% is considered noise/common phrases — no penalty
 
+        # AI detection: informational only, NO score penalty
+        # Displayed as a badge/flag in the UI, not a deduction
         if ai_detection_result["score"] > 80:
-            ai_penalty = round(final_score * 0.2, 2)
-            final_score *= 0.8
             penalties.append({
-                "name": "AI Content",
-                "detail": f"AI probability {ai_detection_result['score']}% — 20% penalty",
-                "deduction": -ai_penalty,
+                "name": "AI Content Flag",
+                "detail": f"AI probability {ai_detection_result['score']}% — flagged for review (no score deduction)",
+                "deduction": 0,
             })
+
+        # Off-topic floor: if essay is completely off-topic, cap the score
+        if topic_score < 10:
+            off_topic_cap = 25.0
+            if final_score > off_topic_cap:
+                overshoot = round(final_score - off_topic_cap, 2)
+                final_score = off_topic_cap
+                penalties.append({
+                    "name": "Off-Topic",
+                    "detail": f"Topic relevance {topic_score}% — score capped at {off_topic_cap}",
+                    "deduction": -overshoot,
+                })
 
         final_score = round(max(0.0, min(100.0, final_score)), 2)
 

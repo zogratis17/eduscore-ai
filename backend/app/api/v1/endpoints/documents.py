@@ -23,6 +23,8 @@ MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB
 
 @router.get("/", response_model=List[DocumentResponse])
 async def list_documents(
+    skip: int = 0,
+    limit: int = 100,
     db: AsyncIOMotorDatabase = Depends(get_database),
     current_user: dict = Depends(get_current_user)
 ) -> Any:
@@ -30,7 +32,8 @@ async def list_documents(
     Get all documents for the current user.
     """
     cursor = db["documents"].find({"uploaded_by": str(current_user["_id"])})
-    docs = await cursor.to_list(length=100)
+    cursor.sort("created_at", -1) # Default sort by newest
+    docs = await cursor.skip(skip).to_list(length=limit)
     return docs
 
 @router.get("/{document_id}", response_model=DocumentResponse)
@@ -71,6 +74,17 @@ async def upload_document(
         )
 
     # 2. Save File to Disk (Async)
+    # 2a. Validate file size BEFORE saving to storage
+    content = await file.read()
+    file_size = len(content)
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="File size exceeds maximum limit of 25MB."
+        )
+    # Reset file position so storage_service can read it
+    await file.seek(0)
+
     try:
         storage_path = await storage_service.save_file(file)
     except Exception as e:
@@ -78,19 +92,6 @@ async def upload_document(
 
     # 3. Create Database Record
     file_type = ALLOWED_MIME_TYPES[file.content_type]
-    
-    # Get file size safely and validate
-    try:
-        file_size = os.path.getsize(storage_path)
-        if file_size > MAX_FILE_SIZE:
-            # Cleanup
-            storage_service.delete_file(storage_path)
-            raise HTTPException(
-                status_code=400,
-                detail=f"File size exceeds maximum limit of 25MB."
-            )
-    except OSError:
-        file_size = 0
 
     doc_in = Document(
         uploaded_by=str(current_user["_id"]), 
@@ -154,9 +155,6 @@ async def delete_document(
     # Also delete evaluations
     await db["evaluations"].delete_many({"document_id": document_id})
 
-    # Clean up plagiarism corpus — remove the fingerprint so re-uploads don't ghost-match
-    await db["plagiarism_hashes"].delete_one({"document_id": document_id})
-    
     # Clean up plagiarism corpus — remove the fingerprint so re-uploads don't ghost-match
     await db["plagiarism_hashes"].delete_one({"document_id": document_id})
     

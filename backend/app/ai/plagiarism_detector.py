@@ -1,6 +1,7 @@
 import logging
 import re
 import pickle
+from datetime import datetime
 from typing import Dict, Any, List, Set
 from datasketch import MinHash, MinHashLSH
 from app.core.config import settings
@@ -23,29 +24,28 @@ class PlagiarismDetector:
 
     async def initialize(self, db: AsyncIOMotorDatabase):
         """
-        Loads all existing hashes from MongoDB into memory.
-        This should be called on app startup.
+        Loads hashes from MongoDB into memory.
+        Incrementally loads only NEW documents not already in mem.
+        Called before each plagiarism check to ensure cross-worker consistency.
         """
-        if self._is_initialized:
-            return
-
-        logger.info("Initializing Plagiarism Corpus from MongoDB...")
         count = 0
         cursor = db["plagiarism_hashes"].find({})
         async for doc in cursor:
             try:
-                # Load MinHash from binary
-                minhash = pickle.loads(doc["signature"])
                 doc_id = doc["document_id"]
-                
+                # Skip if already loaded in this process
+                if doc_id in self.corpus_signatures:
+                    continue
+                    
+                minhash = pickle.loads(doc["signature"])
                 self.corpus_signatures[doc_id] = minhash
                 self.lsh.insert(doc_id, minhash)
                 count += 1
             except Exception as e:
                 logger.error(f"Failed to load hash for {doc.get('document_id')}: {e}")
         
-        self._is_initialized = True
-        logger.info(f"Loaded {count} documents into Plagiarism LSH index.")
+        if count > 0:
+            logger.info(f"Loaded {count} new documents into Plagiarism LSH index (total: {len(self.corpus_signatures)}).")
 
     def _tokenize(self, text: str) -> Set[str]:
         if not text:
@@ -88,7 +88,7 @@ class PlagiarismDetector:
             {"$set": {
                 "document_id": doc_id, 
                 "signature": signature_blob,
-                "updated_at": settings.PROJECT_NAME # timestamp placeholder or util
+                "updated_at": datetime.utcnow()
             }},
             upsert=True
         )

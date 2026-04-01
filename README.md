@@ -38,11 +38,26 @@ Before you begin, ensure you have the following installed:
     Once the containers are running (this may take a few minutes the first time), access the following URLs:
 
     *   **Frontend (Dashboard):** [http://localhost:5173](http://localhost:5173)
-    *   **Backend API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
     *   **Celery Monitoring (Flower):** [http://localhost:5555](http://localhost:5555)
     *   **MinIO Console (Storage):** [http://localhost:9001](http://localhost:9001)
         *   User: `minioadmin`
         *   Password: `changeme123`
+
+### 🪟 Windows Support
+
+You can run this application on Windows using **Docker Desktop** (Recommended).
+
+1.  **Install Docker Desktop**: Ensure "Use WSL 2 based engine" is checked in Settings > General.
+2.  **Run with Docker**:
+    ```powershell
+    docker-compose up --build
+    ```
+
+**Alternative: Local Script (Advanced)**
+If you prefer running services locally (without Docker for code), we provide a helper script:
+1.  Ensure you have Python 3.10+ and Node.js installed.
+2.  Run `start_app.bat` (Double click or run in terminal).
+    *   *Note: This requires MongoDB, Redis, and MinIO to be running separately (e.g., via Docker).*
 
 ### 📝 How to Use
 

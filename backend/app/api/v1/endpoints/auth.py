@@ -70,10 +70,11 @@ async def update_user_me(
     Update current user profile.
     """
     update_data = user_update.model_dump(exclude_unset=True)
-    update_data["updated_at"] = datetime.utcnow()
     
     if not update_data:
         return current_user
+
+    update_data["updated_at"] = datetime.utcnow()
         
     await db["users"].update_one(
         {"_id": current_user["_id"]},

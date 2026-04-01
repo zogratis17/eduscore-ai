@@ -162,12 +162,14 @@ def evaluate_document_task(self, document_id: str):
         # If auto, it's 'graded' (done). If suggested, it's 'evaluated' (needs review).
         doc_status = "graded" if is_auto else "evaluated"
         
+        # Always persist final_score on the document so analytics can aggregate it.
+        # The distinction between auto/suggested is tracked via status, not score presence.
         doc_collection.update_one(
             {"_id": ObjectId(document_id)},
             {
                 "$set": {
                     "status": doc_status,
-                    "final_score": final_score if is_auto else None, # Only set final_score on doc if auto
+                    "final_score": final_score,
                     "updated_at": datetime.utcnow(),
                 }
             },
@@ -186,7 +188,11 @@ def evaluate_document_task(self, document_id: str):
                 {"$set": {"status": "processing", "updated_at": datetime.utcnow()}}
             )
             # Retry the task
-            raise self.retry(exc=e, countdown=30, max_retries=10)
+            try:
+                raise self.retry(exc=e, countdown=30, max_retries=10)
+            except self.MaxRetriesExceededError:
+                error_msg = f"Evaluation failed after max retries due to AI rate limits: {error_msg}"
+                # Fall through to update status to failed_evaluation
         
         # Genuine failure
         logger.error(f"Error evaluating document {document_id}: {error_msg}")

@@ -25,6 +25,11 @@ class Evaluation(BaseModel):
     # High-level feedback
     overall_feedback: Optional[str] = None
     
+    # Grading workflow
+    status: Optional[str] = None  # "pending_review", "finalized"
+    finalized_at: Optional[datetime] = None
+    finalized_by: Optional[str] = None
+    
     # Metadata
     processing_time_ms: Optional[float] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

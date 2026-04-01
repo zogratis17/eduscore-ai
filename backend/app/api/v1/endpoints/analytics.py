@@ -33,13 +33,14 @@ async def get_dashboard_stats(
         {"uploaded_by": user_id, "status": {"$in": ["pending", "processing"]}}
     )
 
-    # Average score (current period)
+    # Average score (current 30-day period)
     pipeline_current = [
         {
             "$match": {
                 "uploaded_by": user_id,
                 "status": "evaluated",
                 "final_score": {"$ne": None},
+                "created_at": {"$gte": thirty_days_ago},
             }
         },
         {"$group": {"_id": None, "avg_score": {"$avg": "$final_score"}}},

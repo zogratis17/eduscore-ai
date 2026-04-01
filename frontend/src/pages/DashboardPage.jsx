@@ -252,7 +252,7 @@ const DashboardPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
-                        to={`/results/${doc._id}`}
+                        to={(doc.status === 'evaluated' || doc.status === 'completed' || doc.status === 'graded') ? `/results/${doc._id}` : '#'}
                         className={`mr-4 ${doc.status === 'evaluated' ? 'text-amber-600 font-bold hover:text-amber-700' : 'text-primary-600 hover:text-primary-900'}`}
                       >
                         {doc.status === 'evaluated' ? 'Review Grade' : 'View'}

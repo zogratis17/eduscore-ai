@@ -1,3 +1,6 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
@@ -5,10 +8,20 @@ from app.db.mongodb import connect_to_mongo, close_mongo_connection
 from app.api.v1.api import api_router
 from app.workers.celery_app import celery_app  # Import to initialize Celery config
 
-print(f"DEBUG: settings.REDIS_URL = {settings.REDIS_URL}")
-print(f"DEBUG: settings.BACKEND_CORS_ORIGINS = {settings.BACKEND_CORS_ORIGINS}")
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title=settings.PROJECT_NAME)
+
+@asynccontextmanager
+async def lifespan(app):
+    """Startup and shutdown lifecycle for the FastAPI app."""
+    await connect_to_mongo()
+    logger.info("Application startup complete.")
+    yield
+    await close_mongo_connection()
+    logger.info("Application shutdown complete.")
+
+
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 # Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:
@@ -19,14 +32,6 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-@app.on_event("startup")
-async def startup_db_client():
-    await connect_to_mongo()
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    await close_mongo_connection()
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
