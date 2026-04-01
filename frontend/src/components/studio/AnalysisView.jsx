@@ -6,10 +6,65 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 
+const HighlightedText = ({ text, errors }) => {
+    if (!text) return null;
+    if (!errors || errors.length === 0) return <span>{text}</span>;
+
+    // Filter and sort errors to prevent overlapping highlighting issues
+    const validErrors = errors
+        .filter(e => e.offset !== undefined && e.length !== undefined)
+        .sort((a, b) => a.offset - b.offset);
+
+    // Flatten overlaps (if error B starts before error A ends, skip error B for now)
+    const cleanErrors = [];
+    let lastEnd = 0;
+    for (const err of validErrors) {
+        if (err.offset >= lastEnd) {
+            cleanErrors.push(err);
+            lastEnd = err.offset + err.length;
+        }
+    }
+
+    const segments = [];
+    let currentIndex = 0;
+
+    cleanErrors.forEach((error, index) => {
+        // Render text before the error
+        if (error.offset > currentIndex) {
+            segments.push(
+                <span key={`text-${index}`}>{text.substring(currentIndex, error.offset)}</span>
+            );
+        }
+
+        // Render the highlighted error
+        const errorText = text.substring(error.offset, error.offset + error.length);
+        const tooltip = `${error.message}${error.suggestion ? ` (Suggestion: ${error.suggestion})` : ''}`;
+        
+        segments.push(
+            <span 
+                key={`error-${index}`} 
+                className="bg-rose-200 text-rose-900 border-b-2 border-rose-400 cursor-help transition-all hover:bg-rose-300 rounded-sm px-[2px] mx-[1px]"
+                title={tooltip}
+            >
+                {errorText}
+            </span>
+        );
+
+        currentIndex = error.offset + error.length;
+    });
+
+    // Render remaining text
+    if (currentIndex < text.length) {
+        segments.push(<span key={`text-end`}>{text.substring(currentIndex)}</span>);
+    }
+
+    return <div className="leading-relaxed whitespace-pre-wrap">{segments}</div>;
+};
+
 const AnalysisView = ({ doc, results, onBack }) => {
     const [activeTab, setActiveTab] = useState('rubric');
-    const [showGrammar, setShowGrammar] = useState(true);
-    const [showPlagiarism, setShowPlagiarism] = useState(true);
+    const [showGrammar, setShowGrammar] = useState(false);
+    const [showPlagiarism, setShowPlagiarism] = useState(false);
 
     // State to hold manual overrides for scores
     // Initialize from results or default
@@ -196,18 +251,18 @@ const AnalysisView = ({ doc, results, onBack }) => {
                                     <p className="text-slate-400 text-sm mt-1">Please wait</p>
                                 </div>
                             </div>
-                        ) : pdfUrl ? (
-                            /* PDF Viewer - Only for PDF files */
+                        ) : (pdfUrl && !showGrammar) ? (
+                            /* PDF Viewer - Only for PDF files and when grammar highlights are off */
                             <iframe
                                 src={pdfUrl}
                                 className="w-full h-full border-0"
                                 title="Document Viewer"
                             />
                         ) : doc.extracted_text ? (
-                            /* Text Viewer - For DOCX, TXT and fallback */
+                            /* Text Viewer - For DOCX, TXT and fallback or Grammar highlight mode */
                             <div className="h-full overflow-y-auto p-8 custom-scrollbar">
                                 <div className="max-w-[800px] mx-auto bg-white min-h-[1000px] shadow-sm border border-slate-200 p-12 rounded-sm font-serif text-lg leading-relaxed text-slate-800 whitespace-pre-wrap">
-                                    {(doc.file_type === 'docx' || doc.file_type === 'txt') && (
+                                    {(doc.file_type === 'docx' || doc.file_type === 'txt' || (pdfUrl && showGrammar)) && (
                                         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                             <p className="text-sm text-blue-800 flex items-center gap-2">
                                                 <Info size={16} />
@@ -215,7 +270,11 @@ const AnalysisView = ({ doc, results, onBack }) => {
                                             </p>
                                         </div>
                                     )}
-                                    {doc.extracted_text}
+                                    {showGrammar ? (
+                                        <HighlightedText text={doc.extracted_text} errors={results.components?.grammar?.errors || []} />
+                                    ) : (
+                                        doc.extracted_text
+                                    )}
                                 </div>
                             </div>
                         ) : (

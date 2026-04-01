@@ -159,18 +159,7 @@ class GeminiEvaluator:
                     continue
 
         logger.error(f"All Gemini models exhausted. Last error: {last_error}")
-        
-        # FIX: Fallback to mock result to prevent evaluations from hanging/failing when API quota is exceeded.
-        logger.warning("Returning mock Gemini result because API is unavailable.")
-        return {
-            "grammar": {"score": 75, "reasoning": "[MOCK] Grammar is acceptable.", "strengths": ["Clear sentences."], "improvements": ["Watch punctuation."]},
-            "vocabulary": {"score": 80, "reasoning": "[MOCK] Vocabulary is decent.", "strengths": ["Some advanced words used."], "improvements": ["Use more varied terminology."]},
-            "coherence": {"score": 70, "reasoning": "[MOCK] Structure makes sense.", "strengths": ["Organized paragraphs."], "improvements": ["Better transitions needed."]},
-            "topic_relevance": {"score": 85, "reasoning": "[MOCK] Addresses the core prompt.", "strengths": ["Stays on topic."], "improvements": ["Provide more focused examples."]},
-            "ai_detection": {"score": 10, "label": "Likely Human", "reasoning": "[MOCK] Text appears natural."},
-            "_engine": "gemini-mock",
-            "_model": "mock-fallback"
-        }
+        return None
 
 
 gemini_evaluator = GeminiEvaluator()

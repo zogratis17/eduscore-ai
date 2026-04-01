@@ -27,3 +27,6 @@ class DocumentResponse(DocumentBase):
         populate_by_name = True
         from_attributes = True
         arbitrary_types_allowed = True
+
+class DocumentDetailResponse(DocumentResponse):
+    extracted_text: Optional[str] = None

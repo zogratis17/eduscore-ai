@@ -6,7 +6,7 @@ from bson import ObjectId
 
 from app.db.mongodb import get_database
 from app.models.document import Document
-from app.schemas.document import DocumentResponse
+from app.schemas.document import DocumentResponse, DocumentDetailResponse
 from app.services.storage_service import storage_service
 from app.api.deps import get_current_user
 from app.workers.tasks.document_tasks import process_uploaded_document
@@ -36,7 +36,7 @@ async def list_documents(
     docs = await cursor.skip(skip).to_list(length=limit)
     return docs
 
-@router.get("/{document_id}", response_model=DocumentResponse)
+@router.get("/{document_id}", response_model=DocumentDetailResponse)
 async def get_document(
     document_id: str,
     db: AsyncIOMotorDatabase = Depends(get_database),
