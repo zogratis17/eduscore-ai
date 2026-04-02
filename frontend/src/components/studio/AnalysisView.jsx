@@ -6,59 +6,72 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 
-const HighlightedText = ({ text, errors }) => {
-    if (!text) return null;
-    if (!errors || errors.length === 0) return <span>{text}</span>;
-
-    // Filter and sort errors to prevent overlapping highlighting issues
-    const validErrors = errors
-        .filter(e => e.offset !== undefined && e.length !== undefined)
-        .sort((a, b) => a.offset - b.offset);
-
-    // Flatten overlaps (if error B starts before error A ends, skip error B for now)
-    const cleanErrors = [];
-    let lastEnd = 0;
-    for (const err of validErrors) {
-        if (err.offset >= lastEnd) {
-            cleanErrors.push(err);
-            lastEnd = err.offset + err.length;
-        }
-    }
-
-    const segments = [];
-    let currentIndex = 0;
-
-    cleanErrors.forEach((error, index) => {
-        // Render text before the error
-        if (error.offset > currentIndex) {
-            segments.push(
-                <span key={`text-${index}`}>{text.substring(currentIndex, error.offset)}</span>
-            );
-        }
-
-        // Render the highlighted error
-        const errorText = text.substring(error.offset, error.offset + error.length);
-        const tooltip = `${error.message}${error.suggestion ? ` (Suggestion: ${error.suggestion})` : ''}`;
-        
-        segments.push(
-            <span 
-                key={`error-${index}`} 
-                className="bg-rose-200 text-rose-900 border-b-2 border-rose-400 cursor-help transition-all hover:bg-rose-300 rounded-sm px-[2px] mx-[1px]"
-                title={tooltip}
-            >
-                {errorText}
-            </span>
+const GrammarIssuesList = ({ text, errors }) => {
+    if (!errors || errors.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+                <CheckCircle2 className="h-16 w-16 text-emerald-400 mb-4" />
+                <h3 className="text-xl font-bold text-slate-800">No Grammar Issues Found</h3>
+                <p className="text-slate-500 text-sm mt-2">The AI didn't find any significant grammatical errors.</p>
+            </div>
         );
-
-        currentIndex = error.offset + error.length;
-    });
-
-    // Render remaining text
-    if (currentIndex < text.length) {
-        segments.push(<span key={`text-end`}>{text.substring(currentIndex)}</span>);
     }
 
-    return <div className="leading-relaxed whitespace-pre-wrap">{segments}</div>;
+    return (
+        <div className="space-y-6 font-sans max-w-4xl mx-auto py-4">
+            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                <Highlighter className="text-rose-500" />
+                Identified Grammar Issues
+            </h2>
+            {errors.map((err, i) => {
+                // Estimate page number (roughly 1500 chars per page)
+                const pseudoPage = err.offset !== undefined ? Math.floor(err.offset / 1500) + 1 : '?';
+                
+                // Get context surrounding the error safely
+                const start = Math.max(0, (err.offset || 0) - 60);
+                const end = Math.min(text.length, (err.offset || 0) + (err.length || 0) + 60);
+                const prefix = text.substring(start, err.offset || 0);
+                const issueText = err.offset !== undefined ? text.substring(err.offset, err.offset + err.length) : err.context || 'Unknown';
+                const suffix = text.substring((err.offset || 0) + (err.length || 0), end);
+
+                return (
+                    <div key={i} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-rose-400"></div>
+                        <div className="flex justify-between items-start mb-4 pl-2">
+                            <div>
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 text-xs font-bold border border-rose-100">
+                                    <AlertTriangle size={12} /> Grammar Issue
+                                </span>
+                            </div>
+                            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                                Approx. Page {pseudoPage}
+                            </span>
+                        </div>
+                        
+                        <div className="mb-5 pl-2">
+                            <p className="text-slate-800 font-medium text-base mb-2">{err.message}</p>
+                            {err.suggestion && (
+                                <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 inline-block">
+                                    <p className="text-emerald-800 text-sm font-semibold flex items-center gap-2">
+                                        <CheckCircle size={16} className="text-emerald-500" /> 
+                                        Suggested Fix: <span className="underline decoration-emerald-300 underline-offset-2">{err.suggestion}</span>
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-lg font-serif text-slate-700 text-lg leading-relaxed border border-slate-200 shadow-inner">
+                            <span className="text-slate-400 leading-none mr-1">...</span>
+                            {prefix}
+                            <span className="bg-rose-200 text-rose-900 border-b-2 border-rose-400 rounded px-1 font-bold shadow-sm">{issueText}</span>
+                            {suffix}
+                            <span className="text-slate-400 leading-none ml-1">...</span>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
 };
 
 const AnalysisView = ({ doc, results, onBack }) => {
@@ -293,7 +306,7 @@ const AnalysisView = ({ doc, results, onBack }) => {
                                         </div>
                                     )}
                                     {showGrammar ? (
-                                        <HighlightedText text={doc.extracted_text} errors={results.components?.grammar?.errors || []} />
+                                        <GrammarIssuesList text={doc.extracted_text} errors={results.components?.grammar?.errors || []} />
                                     ) : (
                                         doc.extracted_text
                                     )}

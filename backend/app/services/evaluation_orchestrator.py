@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, Any, Callable, Optional
-from app.ai.grammar_analyzer import grammar_analyzer
 from app.ai.plagiarism_detector import plagiarism_detector
 from app.ai.gemini_evaluator import gemini_evaluator
 from app.ai.rag_engine import rag_engine
@@ -44,12 +43,7 @@ class EvaluationOrchestrator:
 
         logger.info("Starting document evaluation...")
 
-        # ── Step 1: Grammar Error Spans (LanguageTool — for UI highlighting) ──
-        _update("analyzing_grammar")
-        logger.info("Running Grammar Analysis (LanguageTool — for error spans)...")
-        lt_grammar_result = await grammar_analyzer.analyze(text)
-
-        # ── Step 2: Plagiarism (MinHash — internal duplicate detection) ──
+        # ── Step 1: Plagiarism (MinHash — internal duplicate detection) ──
         _update("analyzing_plagiarism")
         logger.info("Running Plagiarism Detection (MinHash)...")
         plagiarism_result = plagiarism_detector.check_plagiarism(
@@ -70,18 +64,38 @@ class EvaluationOrchestrator:
         scoring_engine = "gemini"
         logger.info("Using Gemini scores for evaluation.")
 
-        # Extract Gemini scores into result dicts
-        # Grammar: use Gemini's holistic score, but keep LanguageTool's error spans for UI
+        # Process grammar error spans natively from Gemini's response
+        computed_errors = []
+        gemini_spans = gemini_result["grammar"].get("error_spans", [])
+        
+        for span in gemini_spans:
+            original = span.get("original_text", "")
+            if not original:
+                continue
+                
+            offset = text.find(original)
+            if offset != -1:
+                computed_errors.append({
+                    "message": span.get("message", "Grammar issue"),
+                    "short_message": span.get("message", "Grammar issue"),
+                    "offset": offset,
+                    "length": len(original),
+                    "replacements": [span.get("suggestion", "")] if span.get("suggestion") else [],
+                    "suggestion": span.get("suggestion", ""),
+                    "rule_id": "GEMINI_AI_GRAMMAR",
+                    "rule_category": "GRAMMAR",
+                    "context": original
+                })
+
         grammar_result = {
             "score": gemini_result["grammar"]["score"],
             "reasoning": gemini_result["grammar"].get("reasoning", ""),
             "strengths": gemini_result["grammar"].get("strengths", []),
             "improvements": gemini_result["grammar"].get("improvements", []),
             "engine": "gemini",
-            # Preserve LanguageTool error spans for the interactive EssayViewer
-            "errors": lt_grammar_result.get("errors", []),
-            "error_count": lt_grammar_result.get("error_count", 0),
-            "error_rate": lt_grammar_result.get("error_rate", 0),
+            "errors": computed_errors,
+            "error_count": len(computed_errors),
+            "error_rate": round(len(computed_errors) / max(1, len(text.split())), 4),
         }
         vocab_result = {
             "score": gemini_result["vocabulary"]["score"],

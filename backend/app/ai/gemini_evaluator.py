@@ -65,7 +65,12 @@ Evaluate the essay on each dimension below. For each, provide:
 
 ### Dimensions to Score:
 
-1. **grammar** — Evaluate overall grammatical correctness, spelling, punctuation, and sentence structure. Consider the severity and frequency of errors relative to the essay's length. Minor typos in an otherwise well-written essay should not tank the score. A score of 70+ means the writing is mostly error-free with only minor issues.
+1. **grammar** — Evaluate overall grammatical correctness, spelling, punctuation, and sentence structure. Consider the severity and frequency of errors relative to the essay's length. A score of 70+ means the writing is mostly error-free with only minor issues.
+   *CRITICAL RULE:* You must return an `error_spans` array inside the `grammar` object. For each true, academic grammar or spelling error you find, include:
+   - `original_text`: The EXACT substring from the essay that contains the error (max 10 words). This must exactly perfectly match the text character-for-character so it can be automatically highlighted. Include enough context so it's unique if it's a short word.
+   - `message`: A short explanation of the error.
+   - `suggestion`: A suggested correction.
+   *NOTE:* Ignore proper nouns, places, people's names, and valid stylistic slang. Do not flag them as errors.
 
 2. **vocabulary** — Evaluate lexical diversity, word choice precision, use of academic/domain vocabulary, and avoidance of repetition. A score of 70+ means the writing uses varied, precise, and appropriate vocabulary.
 
@@ -78,6 +83,7 @@ Evaluate the essay on each dimension below. For each, provide:
 ## Required JSON Output Format:
 Return a JSON object with exactly these keys: grammar, vocabulary, coherence, topic_relevance, ai_detection.
 Each key (except ai_detection) should have: score (int), reasoning (string), strengths (list of strings), improvements (list of strings).
+The `grammar` key MUST also have: `error_spans` (list of objects with original_text, message, suggestion).
 ai_detection should have: score (int), reasoning (string), label (string).
 """
 
@@ -114,10 +120,9 @@ class GeminiEvaluator:
                 "Evaluate topic relevance based on internal coherence and focus."
             )
 
-        # Truncate essay to ~3000 words for token efficiency
-        words = text.split()
-        truncated = " ".join(words[:3000])
-        if len(words) > 3000:
+        # Truncate essay to ~15000 characters for token efficiency while preserving exact spacing
+        truncated = text[:15000]
+        if len(text) > 15000:
             truncated += "\n[... essay truncated for analysis ...]"
 
         full_prompt = EVALUATION_PROMPT.format(
