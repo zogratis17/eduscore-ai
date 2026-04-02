@@ -14,10 +14,20 @@ const STAGES = [
 ];
 
 const ProcessingStepper = ({ currentStatus }) => {
-  const currentIdx = STAGES.findIndex(s => s.key === currentStatus);
-  const progress = currentIdx >= 0 ? ((currentIdx + 1) / STAGES.length) * 100 : 0;
-  const isQueued = currentIdx === -1;
-  const estimatedTime = isQueued ? "30" : Math.max(5, 30 - (currentIdx * 5));
+  const [maxIdx, setMaxIdx] = useState(-1);
+
+  React.useEffect(() => {
+    const idx = STAGES.findIndex(s => s.key === currentStatus);
+    if (idx > maxIdx) {
+      setMaxIdx(idx);
+    }
+  }, [currentStatus, maxIdx]);
+
+  // Lock the visible index to the maximum reached so far to prevent backward jumps during background retries
+  const displayIdx = maxIdx >= 0 ? maxIdx : STAGES.findIndex(s => s.key === currentStatus);
+  const progress = displayIdx >= 0 ? ((displayIdx + 1) / STAGES.length) * 100 : 0;
+  const isQueued = displayIdx === -1;
+  const estimatedTime = isQueued ? "30" : Math.max(5, 30 - (displayIdx * 5));
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[600px] p-6">
@@ -29,10 +39,16 @@ const ProcessingStepper = ({ currentStatus }) => {
             <span>AI Evaluation in Progress</span>
           </div>
           <p className="text-gray-600 text-base font-medium">
-            {isQueued ? 'Preparing your document...' : STAGES[currentIdx]?.label || 'Processing...'}
+            {isQueued 
+              ? 'Preparing your document...' 
+              : currentStatus === 'retrying' 
+                ? 'AI busy. Retrying automatically...' 
+                : STAGES[displayIdx]?.label || 'Processing...'}
           </p>
           <p className="text-gray-400 text-sm mt-1">
-            ⏱️ Estimated time remaining: ~{estimatedTime} seconds
+            {currentStatus === 'retrying' 
+              ? '⏱️ Waiting for API slot to open (approx 30s)...' 
+              : `⏱️ Estimated time remaining: ~${estimatedTime} seconds`}
           </p>
         </div>
 
@@ -56,9 +72,9 @@ const ProcessingStepper = ({ currentStatus }) => {
         <div className="space-y-3">
           {STAGES.map((stage, idx) => {
             const Icon = stage.icon;
-            const isDone = idx < currentIdx;
-            const isActive = idx === currentIdx;
-            const isPending = idx > currentIdx;
+            const isDone = idx < displayIdx;
+            const isActive = idx === displayIdx;
+            const isPending = idx > displayIdx;
 
             return (
               <div 
@@ -151,9 +167,14 @@ const ResultsPage = () => {
       const docData = docRes.data;
       setDoc(docData);
 
+      const processingStatuses = [
+        'pending', 'processing', 'completed', 'retrying',
+        ...STAGES.map(s => s.key)
+      ];
+
       const isStillProcessing =
         resRes.data?.status === 'processing' ||
-        ['pending', 'processing', 'completed'].includes(docData?.status);
+        processingStatuses.includes(docData?.status);
 
       if (isStillProcessing && !resRes.data?.final_score) {
         setIsProcessing(true);
@@ -176,9 +197,10 @@ const ResultsPage = () => {
     if (!isProcessing) return;
     const interval = setInterval(async () => {
       try {
+        const t = Date.now();
         const [docRes, resRes] = await Promise.all([
-          api.get(`/documents/${id}`),
-          api.get(`/evaluation/results/${id}`)
+          api.get(`/documents/${id}?t=${t}`),
+          api.get(`/evaluation/results/${id}?t=${t}`)
         ]);
         setDoc(docRes.data);
         if (resRes.data?.status !== 'processing') {

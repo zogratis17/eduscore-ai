@@ -61,7 +61,7 @@ async def get_evaluation_results(
     # 2. Fetch Evaluation
     evaluation = await db["evaluations"].find_one({"document_id": document_id})
     if not evaluation:
-        if doc.get("status") in ["processing", "pending", "completed"]:
+        if doc.get("status") not in ["evaluated", "graded", "failed", "failed_evaluation"]:
              return {"status": "processing", "message": "Evaluation not yet available"}
         return {"status": "not_found", "message": "No evaluation found"}
         

@@ -182,10 +182,10 @@ def evaluate_document_task(self, document_id: str):
         # Check if it's a Gemini availability/rate-limit error
         if "Gemini" in error_msg or "429" in error_msg or "quota" in error_msg.lower():
             logger.warning(f"Gemini rate limited/unavailable for doc {document_id}. Retrying in 30s. Error: {error_msg}")
-            # Ensure status remains 'processing' so user knows it's active
+            # Ensure status reflects the retry delay so user doesn't think it's stuck
             doc_collection.update_one(
                 {"_id": ObjectId(document_id)},
-                {"$set": {"status": "processing", "updated_at": datetime.utcnow()}}
+                {"$set": {"status": "retrying", "updated_at": datetime.utcnow()}}
             )
             # Retry the task
             try:

@@ -101,9 +101,10 @@ const StudioPage = () => {
         if (!isProcessing || !selectedDocId) return;
         const interval = setInterval(async () => {
             try {
+                const t = Date.now();
                 const [docRes, resRes] = await Promise.all([
-                    api.get(`/documents/${selectedDocId}`),
-                    api.get(`/evaluation/results/${selectedDocId}`)
+                    api.get(`/documents/${selectedDocId}?t=${t}`),
+                    api.get(`/evaluation/results/${selectedDocId}?t=${t}`)
                 ]);
                 setDoc(docRes.data);
                 if (resRes.data?.status !== 'processing') {
