@@ -105,18 +105,18 @@ const Sidebar = () => {
 
       {/* User Profile & Logout */}
       <div className="p-3 border-t border-white/[0.06] relative z-10">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] mb-2">
+        <NavLink to="/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] mb-2 hover:bg-white/[0.08] transition-colors cursor-pointer group">
           <div className="relative">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-violet-600 flex items-center justify-center text-xs font-bold text-white ring-2 ring-white/10 shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-violet-600 flex items-center justify-center text-xs font-bold text-white ring-2 ring-white/10 shadow-sm group-hover:ring-primary-500/50 transition-all">
               {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-slate-900" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-white truncate">{user?.name || user?.email || 'User'}</p>
+            <p className="text-xs font-medium text-white truncate group-hover:text-primary-300 transition-colors">{user?.name || user?.email || 'User'}</p>
             <p className="text-[10px] text-slate-500 capitalize">{user?.role || 'Student'}</p>
           </div>
-        </div>
+        </NavLink>
         <button
           onClick={logout}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-[13px] font-medium text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200"

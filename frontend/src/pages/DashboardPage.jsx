@@ -279,10 +279,10 @@ const DashboardPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
-                        to={(doc.status === 'evaluated' || doc.status === 'completed' || doc.status === 'graded') ? `/results/${doc._id}` : '#'}
+                        to={`/results/${doc._id}`}
                         className={`mr-4 ${doc.status === 'evaluated' ? 'text-amber-600 font-bold hover:text-amber-700' : 'text-primary-600 hover:text-primary-900'}`}
                       >
-                        {doc.status === 'evaluated' ? 'Review Grade' : 'View'}
+                        {doc.status === 'evaluated' ? 'Review Grade' : (doc.status === 'processing' || doc.status === 'pending' ? 'View Progress' : 'View')}
                       </Link>
                       <button className="text-gray-400 hover:text-gray-500">
                         <MoreVertical className="h-5 w-5" />

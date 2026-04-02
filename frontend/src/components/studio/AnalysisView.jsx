@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     ArrowLeft, BrainCircuit, ShieldAlert, Scale, CheckCircle2,
     Highlighter, Info, Copy, FileText, ChevronRight, AlertTriangle,
-    Activity, Save, CheckCircle, Loader2, Download
+    Activity, Save, CheckCircle, Loader2, Download, Printer
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -207,10 +207,17 @@ const AnalysisView = ({ doc, results, onBack }) => {
         }
     };
 
+    const handlePrint = () => {
+        setActiveTab('rubric');
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    };
+
     return (
-        <div className="flex flex-col h-full bg-slate-100 overflow-hidden">
+        <div className="flex flex-col h-full bg-slate-100 overflow-hidden print:overflow-visible print:bg-white print:h-auto">
             {/* Header */}
-            <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-10 shrink-0">
+            <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-10 shrink-0 print:hidden">
                 <div className="flex items-center gap-4">
                     <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
                         <ArrowLeft size={20} />
@@ -233,6 +240,12 @@ const AnalysisView = ({ doc, results, onBack }) => {
                         <span className="text-2xl font-bold text-indigo-600">{calculateTotalScore()}<span className="text-lg text-slate-400 font-normal">/100</span></span>
                     </div>
                     <button
+                        onClick={handlePrint}
+                        className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors flex items-center gap-2"
+                    >
+                        <Printer size={16} /> Export PDF
+                    </button>
+                    <button
                         onClick={handleFinalize}
                         className="px-5 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-shadow shadow-sm hover:shadow-md flex items-center gap-2"
                     >
@@ -242,10 +255,10 @@ const AnalysisView = ({ doc, results, onBack }) => {
             </header>
 
             {/* Main Workspace */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden print:block print:overflow-visible print:h-auto">
 
                 {/* Left Panel: Document Viewer */}
-                <div className="flex-1 bg-slate-50 flex flex-col border-r border-slate-200 min-w-[50%]">
+                <div className="flex-1 bg-slate-50 flex flex-col border-r border-slate-200 min-w-[50%] print:hidden">
                     {/* Viewer Toolbar */}
                     <div className="h-12 bg-white border-b border-slate-200 flex items-center px-4 justify-between shrink-0">
                         <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
@@ -265,12 +278,6 @@ const AnalysisView = ({ doc, results, onBack }) => {
                                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${showGrammar ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-500'}`}
                             >
                                 <Highlighter size={12} /> Grammar
-                            </button>
-                            <button
-                                onClick={() => setShowPlagiarism(!showPlagiarism)}
-                                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${showPlagiarism ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-slate-200 text-slate-500'}`}
-                            >
-                                <Copy size={12} /> Plagiarism
                             </button>
                         </div>
                     </div>
@@ -332,9 +339,9 @@ const AnalysisView = ({ doc, results, onBack }) => {
                 </div>
 
                 {/* Right Panel: Evaluation Engine */}
-                <div className="w-[450px] bg-white flex flex-col shrink-0 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-20">
+                <div className="w-[450px] bg-white flex flex-col shrink-0 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-20 print:w-full print:shadow-none print:border-none">
                     {/* Tab Navigation */}
-                    <div className="flex border-b border-slate-200">
+                    <div className="flex border-b border-slate-200 print:hidden">
                         <button
                             onClick={() => setActiveTab('integrity')}
                             className={`flex-1 py-4 text-sm font-medium flex justify-center items-center gap-2 border-b-2 transition-colors ${activeTab === 'integrity' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
@@ -356,7 +363,7 @@ const AnalysisView = ({ doc, results, onBack }) => {
                     </div>
 
                     {/* Tab Content */}
-                    <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 custom-scrollbar print:overflow-visible print:bg-white print:p-0">
 
                         {activeTab === 'integrity' && (
                             <div className="space-y-6">
@@ -413,7 +420,7 @@ const AnalysisView = ({ doc, results, onBack }) => {
 
                         {activeTab === 'rubric' && (
                             <div className="space-y-4">
-                                <div className="flex justify-between items-center bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                <div className="flex justify-between items-center bg-indigo-50 p-3 rounded-lg border border-indigo-100 print:hidden">
                                     <span className="text-xs font-bold text-indigo-900">Grading Mode</span>
                                     <div className="flex gap-2">
                                         <button
@@ -444,12 +451,12 @@ const AnalysisView = ({ doc, results, onBack }) => {
                                                 <h4 className="text-sm font-bold text-slate-800">{c.label}</h4>
                                                 <p className="text-xs text-slate-500 mt-1 max-w-[200px] truncate">{c.description}</p>
                                             </div>
-                                            <div className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded">
+                                            <div className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded print:bg-transparent print:border print:border-slate-300">
                                                 Weight: {c.weight}%
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-4 print:hidden">
                                             <div className="flex-1">
                                                 <input
                                                     type="range"
@@ -460,17 +467,17 @@ const AnalysisView = ({ doc, results, onBack }) => {
                                                     className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                                                 />
                                             </div>
-                                            <div className="flex flex-col items-center min-w-[3rem]">
+                                            <div className="flex flex-col items-center min-w-[3rem] print:hidden">
                                                 <span className="text-xl font-bold text-indigo-700">{scores[c.id]}<span className="text-sm text-slate-400 font-normal">/100</span></span>
                                             </div>
                                         </div>
 
                                         {/* AI Suggestion */}
-                                        <div className="mt-3 flex items-start gap-2 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
-                                            <BrainCircuit size={14} className="text-indigo-600 mt-0.5 shrink-0" />
+                                        <div className="mt-3 flex items-start gap-2 bg-indigo-50 p-2 rounded-lg border border-indigo-100 print:border-none print:bg-transparent print:p-0">
+                                            <BrainCircuit size={14} className="text-indigo-600 mt-0.5 shrink-0 print:hidden" />
                                             <div>
-                                                <p className="text-xs text-indigo-900 font-medium">AI Suggested: {c.aiScore}/100</p>
-                                                <p className="text-[10px] text-indigo-700/80 leading-tight mt-1">
+                                                <p className="text-xs text-indigo-900 font-medium print:text-slate-800 print:font-bold print:text-base">Score: {scores[c.id] || c.aiScore}/100</p>
+                                                <p className="text-[10px] text-indigo-700/80 leading-tight mt-1 print:hidden">
                                                     Accept this score or drag slider to override.
                                                 </p>
                                             </div>

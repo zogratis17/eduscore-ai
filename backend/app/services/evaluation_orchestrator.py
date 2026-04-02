@@ -151,9 +151,13 @@ class EvaluationOrchestrator:
             logger.info(f"Using Rubric: {rubric.name}")
             for criterion in rubric.criteria:
                 matched_key = self._match_criterion(criterion.name)
-                c_score = score_map.get(matched_key, 0)
                 if matched_key is None:
-                    logger.warning(f"Unknown criterion: '{criterion.name}'. Using score 0.")
+                    # If the AI doesn't have an explicit pillar for this, give it the average score of the text
+                    # to prevent it from dragging the essay down to a 0 artificially.
+                    c_score = sum(score_map.values()) / max(1, len(score_map))
+                    logger.warning(f"Unknown criterion: '{criterion.name}'. Defaulting to average score {c_score}.")
+                else:
+                    c_score = score_map.get(matched_key, 0)
 
                 contribution = round(c_score * (criterion.weight / 100.0), 2)
                 weighted_score += contribution
@@ -285,9 +289,9 @@ class EvaluationOrchestrator:
         """Map a rubric criterion name to an internal score key."""
         n = name.lower()
         grammar_words = ["grammar", "mechanic", "spelling", "punctuation", "syntax"]
-        vocab_words = ["vocab", "lexic", "word choice", "diction", "language use"]
+        vocab_words = ["vocab", "lexic", "word choice", "diction", "language use", "style", "creativity", "originality", "voice"]
         coherence_words = ["coheren", "flow", "structure", "organization", "logic", "clarity",
-                           "consistency", "quality"]
+                           "consistency", "quality", "formatting"]
         topic_words = ["topic", "relevan", "prompt", "focus", "content", "thesis", "argument"]
 
         if any(w in n for w in grammar_words):

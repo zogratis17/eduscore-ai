@@ -199,6 +199,32 @@ const StudioPage = () => {
         );
     }
 
+    // C2. Workspace View (Failed)
+    if (doc?.status === 'failed_evaluation' || doc?.status === 'failed') {
+        return (
+            <FocusLayout>
+                <div className="flex flex-col items-center justify-center h-full w-full bg-slate-50">
+                    <div className="bg-white p-10 rounded-2xl shadow-sm border border-rose-100 text-center max-w-lg">
+                        <AlertTriangle className="h-16 w-16 text-rose-500 mx-auto mb-4" />
+                        <h3 className="text-2xl font-bold text-slate-800 mb-3">Evaluation Failed</h3>
+                        <p className="text-slate-600 mb-6">
+                            The AI API rate limit was completely exhausted or the document parsing failed. We retried multiple times but the service is out of quota. Please try again later.
+                        </p>
+                        <button
+                            onClick={() => {
+                                setDoc(null);
+                                navigate('/studio');
+                            }}
+                            className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition"
+                        >
+                            Return to Library
+                        </button>
+                    </div>
+                </div>
+            </FocusLayout>
+        );
+    }
+
     // D. Workspace View (Analysis)
     if (doc) {
         return (

@@ -156,14 +156,13 @@ const DocumentsPage = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex justify-end gap-2">
-                                        {(doc.status === 'completed' || doc.status === 'evaluated' || doc.status === 'graded') && (
-                                            <Link 
-                                                to={`/results/${doc.id || doc._id}`}
-                                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md transition-colors"
-                                            >
-                                                <Eye className="h-5 w-5" />
-                                            </Link>
-                                        )}
+                                        <Link 
+                                            to={`/results/${doc.id || doc._id}`}
+                                            className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md transition-colors"
+                                            title="View Evaluation"
+                                        >
+                                            <Eye className="h-5 w-5" />
+                                        </Link>
                                         <button 
                                             onClick={() => handleDelete(doc.id || doc._id)}
                                             className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"

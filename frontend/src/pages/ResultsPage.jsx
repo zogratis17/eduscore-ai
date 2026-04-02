@@ -233,6 +233,26 @@ const ResultsPage = () => {
     );
   }
 
+  if (doc?.status === 'failed_evaluation' || doc?.status === 'failed') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center bg-slate-50 p-8">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-rose-100 max-w-lg w-full">
+          <AlertTriangle className="h-16 w-16 text-rose-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Evaluation Failed</h2>
+          <p className="text-slate-600 mb-6">
+            The AI API rate limit is completely exhausted. We retried multiple times but the service is currently over capacity or out of quota. Please try again later.
+          </p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition shadow-sm"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full w-full">
       <AnalysisView doc={doc} results={results} onBack={() => navigate('/dashboard')} />

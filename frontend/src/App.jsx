@@ -10,6 +10,8 @@ import DocumentsPage from './pages/DocumentsPage';
 import ResultsPage from './pages/ResultsPage';
 import RubricManagerPage from './pages/RubricManagerPage';
 import NotFoundPage from './pages/NotFoundPage';
+import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
 
 // Layouts
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -42,6 +44,8 @@ function App() {
             <Route path="/rubrics" element={<RubricManagerPage />} />
             <Route path="/results" element={<DocumentsPage />} />
             <Route path="/results/:id" element={<ResultsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
 
           {/* 404 */}
