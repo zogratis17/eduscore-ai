@@ -17,29 +17,46 @@ import {
 import api from '../services/api';
 import { analyticsService } from '../services/analyticsService';
 
-const StatsCard = ({ title, value, change, icon: Icon, color }) => {
+const StatsCard = ({ title, value, change, icon: Icon, color, delay }) => {
   const isPositive = change && change.startsWith('+') && change !== '+0';
   const isNegative = change && change.startsWith('-');
   const hasChange = change && change !== '' && change !== '0';
 
+  // Map simple color strings back to gradient classes
+  const colorMap = {
+    'bg-blue-500': 'from-blue-500 to-indigo-600 shadow-blue-500/20',
+    'bg-green-500': 'from-emerald-400 to-emerald-600 shadow-emerald-500/20',
+    'bg-orange-500': 'from-amber-400 to-orange-500 shadow-orange-500/20',
+    'bg-red-500': 'from-rose-400 to-red-500 shadow-red-500/20',
+  };
+  const gradientClass = colorMap[color] || 'from-gray-400 to-gray-500 shadow-gray-500/20';
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
-        </div>
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="h-6 w-6 text-white" />
+    <div 
+      className={`glass card-lift rounded-2xl p-6 animate-slide-up bg-white`}
+      style={{ animationDelay: delay }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-semibold text-gray-500 tracking-wide uppercase">{title}</p>
+        <div className={`p-2.5 rounded-xl bg-gradient-to-br ${gradientClass} shadow-lg`}>
+          <Icon className="h-5 w-5 text-white" />
         </div>
       </div>
+      <div>
+        <p className="text-3xl font-bold text-gray-900 tracking-tight">{value}</p>
+      </div>
       {hasChange && (
-        <div className="mt-4 flex items-center text-sm">
-          <span className={`font-medium flex items-center ${isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-gray-500'}`}>
-            {isPositive ? <TrendingUp className="h-4 w-4 mr-1" /> : isNegative ? <TrendingDown className="h-4 w-4 mr-1" /> : <Minus className="h-4 w-4 mr-1" />}
+        <div className="mt-4 flex items-center text-sm font-medium">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-md ${
+            isPositive ? 'bg-emerald-50 text-emerald-700' : 
+            isNegative ? 'bg-rose-50 text-rose-700' : 'bg-gray-50 text-gray-600'
+          }`}>
+            {isPositive ? <TrendingUp className="h-3.5 w-3.5 mr-1" /> : 
+             isNegative ? <TrendingDown className="h-3.5 w-3.5 mr-1" /> : 
+             <Minus className="h-3.5 w-3.5 mr-1" />}
             {change}
           </span>
-          <span className="text-gray-500 ml-2">vs last month</span>
+          <span className="text-gray-400 ml-2 text-xs">vs last month</span>
         </div>
       )}
     </div>
@@ -101,14 +118,14 @@ const DashboardPage = () => {
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'graded': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'evaluated': return 'bg-amber-100 text-amber-800 border-amber-200'; // Needs Review
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'processing': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'graded': return 'bg-emerald-50 text-emerald-700 border-emerald-200/60 ring-1 ring-emerald-500/10';
+      case 'evaluated': return 'bg-amber-50 text-amber-700 border-amber-200/60 ring-1 ring-amber-500/10';
+      case 'completed': return 'bg-blue-50 text-blue-700 border-blue-200/60 ring-1 ring-blue-500/10';
+      case 'processing': return 'bg-indigo-50 text-indigo-700 border-indigo-200/60 ring-1 ring-indigo-500/10';
+      case 'pending': return 'bg-gray-50 text-gray-700 border-gray-200/60 ring-1 ring-gray-500/10';
       case 'failed':
-      case 'failed_evaluation': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-50 text-gray-600 border-gray-100';
+      case 'failed_evaluation': return 'bg-rose-50 text-rose-700 border-rose-200/60 ring-1 ring-rose-500/10';
+      default: return 'bg-gray-50 text-gray-600 border-gray-200/60 ring-1 ring-gray-500/10';
     }
   };
 
@@ -134,16 +151,20 @@ const DashboardPage = () => {
   return (
     <div className="space-y-8">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">Welcome back, here's what's happening today.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 tracking-tight">
+            Dashboard
+          </h1>
+          <p className="mt-1.5 text-sm text-gray-500 font-medium">Welcome back, here's what's happening today.</p>
         </div>
         <Link
           to="/upload"
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-500 hover:to-violet-500 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-glow-sm transition-all duration-200"
         >
-          <Users className="h-4 w-4 mr-2" />
+          <div className="p-1 bg-white/20 rounded-md mr-2">
+            <Users className="h-4 w-4" />
+          </div>
           New Evaluation
         </Link>
       </div>
@@ -156,6 +177,7 @@ const DashboardPage = () => {
           change={stats?.total_documents?.change || ""}
           icon={FileText}
           color="bg-blue-500"
+          delay="0ms"
         />
         <StatsCard
           title="Avg. Score"
@@ -163,6 +185,7 @@ const DashboardPage = () => {
           change={stats?.average_score?.change || ""}
           icon={CheckCircle2}
           color="bg-green-500"
+          delay="50ms"
         />
         <StatsCard
           title="Pending Review"
@@ -170,6 +193,7 @@ const DashboardPage = () => {
           change={stats?.pending_review?.change || ""}
           icon={Clock}
           color="bg-orange-500"
+          delay="100ms"
         />
         <StatsCard
           title="Alerts"
@@ -177,6 +201,7 @@ const DashboardPage = () => {
           change={stats?.alerts?.change || ""}
           icon={AlertCircle}
           color="bg-red-500"
+          delay="150ms"
         />
       </div>
 
@@ -200,10 +225,10 @@ const DashboardPage = () => {
       )}
 
       {/* Recent Activity */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Submissions</h2>
-          <Link to="/results" className="text-sm font-medium text-primary-600 hover:text-primary-500">
+      <div className="glass rounded-2xl overflow-hidden bg-white animate-slide-up" style={{ animationDelay: '250ms' }}>
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900 tracking-tight">Recent Submissions</h2>
+          <Link to="/results" className="text-sm font-medium text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors">
             View all
           </Link>
         </div>
@@ -225,13 +250,15 @@ const DashboardPage = () => {
                   <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {documents.slice(0, 5).map((doc) => (
-                  <tr key={doc._id} className="hover:bg-gray-50 transition-colors">
+              <tbody className="bg-white divide-y divide-gray-100">
+                {documents.slice(0, 5).map((doc, idx) => (
+                  <tr key={doc._id} className="hover:bg-gray-50/50 transition-colors group">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <FileText className="h-5 w-5 text-gray-400 mr-3" />
-                        <span className="text-sm font-medium text-gray-900">{doc.filename}</span>
+                        <div className="p-2 bg-gray-100/80 rounded-lg mr-3 group-hover:bg-white group-hover:shadow-sm transition-all border border-transparent group-hover:border-gray-200/60">
+                          <FileText className="h-5 w-5 text-gray-500" />
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">{doc.filename}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

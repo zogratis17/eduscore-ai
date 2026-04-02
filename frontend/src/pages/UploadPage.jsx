@@ -80,26 +80,33 @@ const UploadPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Upload Documents</h1>
-        <p className="mt-1 text-sm text-gray-500">
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+      <div className="text-center sm:text-left mb-10">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 tracking-tight">Upload Documents</h1>
+        <p className="mt-2 text-sm text-gray-500 font-medium">
           Upload student essays or assignments for AI evaluation. Supported formats: PDF, DOCX, TXT.
         </p>
       </div>
 
+      <div className="space-y-6">
       {/* Dropzone */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">1. Select Scoring Rubric</h2>
+      <div className="glass bg-white p-6 md:p-8 rounded-2xl relative overflow-hidden animate-slide-up" style={{ animationDelay: '0ms' }}>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-bold text-sm">1</div>
+          <h2 className="text-lg font-bold text-gray-900 tracking-tight">Select Scoring Rubric</h2>
+        </div>
         <RubricSelector
           selectedRubricId={selectedRubricId}
           onSelect={setSelectedRubricId}
         />
       </div>
 
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">2. Essay Prompt / Topic (Optional)</h2>
-        <p className="text-sm text-gray-500 mb-3">
+      <div className="glass bg-white p-6 md:p-8 rounded-2xl relative overflow-hidden animate-slide-up" style={{ animationDelay: '50ms' }}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-bold text-sm">2</div>
+          <h2 className="text-lg font-bold text-gray-900 tracking-tight">Essay Prompt / Topic <span className="text-gray-400 font-normal text-sm ml-1">(Optional)</span></h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-4 ml-11">
           Provide the essay prompt for more accurate topic relevance scoring.
         </p>
         <textarea
@@ -107,92 +114,104 @@ const UploadPage = () => {
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="e.g., Discuss the impact of artificial intelligence on modern healthcare..."
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+          className="w-full ml-11 max-w-[calc(100%-2.75rem)] px-4 py-3 border border-gray-200/80 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 bg-surface-50 focus:bg-white resize-none transition-all duration-200"
         />
       </div>
 
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">3. Grading Preference</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="glass bg-white p-6 md:p-8 rounded-2xl relative overflow-hidden animate-slide-up" style={{ animationDelay: '100ms' }}>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-bold text-sm">3</div>
+          <h2 className="text-lg font-bold text-gray-900 tracking-tight">Grading Preference</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-11">
           <div
             onClick={() => setGradingMode('suggested')}
-            className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${gradingMode === 'suggested' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+            className={`cursor-pointer p-5 rounded-xl border-2 transition-all duration-200 ${gradingMode === 'suggested' ? 'border-primary-500 bg-primary-50/50 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'}`}
           >
             <div className="flex items-center gap-3 mb-2">
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${gradingMode === 'suggested' ? 'border-indigo-600' : 'border-gray-400'}`}>
-                {gradingMode === 'suggested' && <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />}
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${gradingMode === 'suggested' ? 'border-primary-600' : 'border-gray-300'}`}>
+                {gradingMode === 'suggested' && <div className="w-2.5 h-2.5 rounded-full bg-primary-600 animate-fade-in" />}
               </div>
-              <span className="font-semibold text-gray-900">Suggested Scoring</span>
+              <span className={`font-bold ${gradingMode === 'suggested' ? 'text-primary-900' : 'text-gray-700'}`}>Suggested Scoring</span>
             </div>
-            <p className="text-sm text-gray-500 ml-8">AI suggests detailed feedback and scores, but you finalize the grade via slider adjustment.</p>
+            <p className="text-sm text-gray-500 ml-8 leading-relaxed">AI suggests detailed feedback and scores, but you finalize the grade via slider adjustment.</p>
           </div>
 
           <div
             onClick={() => setGradingMode('auto')}
-            className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${gradingMode === 'auto' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+            className={`cursor-pointer p-5 rounded-xl border-2 transition-all duration-200 ${gradingMode === 'auto' ? 'border-primary-500 bg-primary-50/50 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'}`}
           >
             <div className="flex items-center gap-3 mb-2">
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${gradingMode === 'auto' ? 'border-indigo-600' : 'border-gray-400'}`}>
-                {gradingMode === 'auto' && <div className="w-2.5 h-2.5 rounded-full bg-indigo-600" />}
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${gradingMode === 'auto' ? 'border-primary-600' : 'border-gray-300'}`}>
+                {gradingMode === 'auto' && <div className="w-2.5 h-2.5 rounded-full bg-primary-600 animate-fade-in" />}
               </div>
-              <span className="font-semibold text-gray-900">AI Auto-Grading</span>
+              <span className={`font-bold ${gradingMode === 'auto' ? 'text-primary-900' : 'text-gray-700'}`}>AI Auto-Grading</span>
             </div>
-            <p className="text-sm text-gray-500 ml-8">AI automatically calculates and locks the grade based on the rubric. Best for bulk tasks.</p>
+            <p className="text-sm text-gray-500 ml-8 leading-relaxed">AI automatically calculates and locks the grade based on the rubric. Best for bulk tasks.</p>
           </div>
         </div>
       </div>
 
-      <div
-        {...getRootProps()}
-        className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer
-          ${isDragActive ? 'border-primary-500 bg-primary-50' : 'border-gray-300 hover:border-gray-400 bg-white'}`}
-      >
-        <input {...getInputProps()} />
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <div className="p-4 bg-primary-50 rounded-full">
-            <Upload className={`h-8 w-8 text-primary-600 ${isDragActive ? 'animate-bounce' : ''}`} />
-          </div>
-          <div>
-            <p className="text-lg font-medium text-gray-900">
-              {isDragActive ? 'Drop files here' : 'Click to upload or drag and drop'}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Maximum file size 25MB
-            </p>
+      <div className="glass bg-white p-6 md:p-8 rounded-2xl relative overflow-hidden animate-slide-up" style={{ animationDelay: '150ms' }}>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-bold text-sm">4</div>
+          <h2 className="text-lg font-bold text-gray-900 tracking-tight">Upload Files</h2>
+        </div>
+
+      <div className="ml-11">
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 cursor-pointer relative overflow-hidden
+            ${isDragActive ? 'border-primary-500 bg-primary-50/50 scale-[1.01] shadow-glow-sm' : 'border-gray-200 hover:border-primary-300 bg-surface-50 hover:bg-white'}`}
+        >
+          <input {...getInputProps()} />
+          <div className="flex flex-col items-center justify-center space-y-4 relative z-10">
+            <div className={`p-4 rounded-full transition-colors duration-300 ${isDragActive ? 'bg-white shadow-sm' : 'bg-white shadow-sm border border-gray-100'}`}>
+              <Upload className={`h-8 w-8 transition-transform duration-300 ${isDragActive ? 'text-primary-600 -translate-y-1' : 'text-primary-500'}`} />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-gray-900 tracking-tight">
+                {isDragActive ? 'Drop files here' : 'Click to upload or drag and drop'}
+              </p>
+              <p className="text-sm text-gray-500 mt-1 font-medium">
+                Maximum file size 25MB
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* File List */}
       {files.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="p-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-sm font-medium text-gray-700">Files to Upload ({files.length})</h3>
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mt-6 shadow-sm animate-slide-up">
+          <div className="p-4 bg-gray-50/80 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-gray-700 tracking-wide uppercase">Files to Upload ({files.length})</h3>
           </div>
-          <ul className="divide-y divide-gray-200">
-            {files.map((file) => (
-              <li key={file.name} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+          <ul className="divide-y divide-gray-100">
+            {files.map((file, idx) => (
+              <li key={file.name} className="px-5 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors animate-fade-in" style={{ animationDelay: `${idx * 50}ms`}}>
                 <div className="flex items-center">
-                  <FileText className="h-5 w-5 text-gray-400 mr-3" />
+                  <div className="p-2 bg-gray-100/80 rounded-lg mr-4 border border-gray-200/60">
+                    <FileText className="h-5 w-5 text-gray-500" />
+                  </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                    <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p className="text-sm font-semibold text-gray-900">{file.name}</p>
+                    <p className="text-[11px] font-medium text-gray-500 mt-0.5">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                 </div>
                 <button
                   onClick={() => removeFile(file.name)}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all duration-200"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </li>
             ))}
           </ul>
-          <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+          <div className="p-4 bg-gray-50/80 border-t border-gray-100 flex justify-end">
             <button
               onClick={handleUpload}
               disabled={uploading}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-500 hover:to-violet-500 shadow-sm hover:shadow-glow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 transition-all duration-200"
             >
               {uploading ? (
                 <>
@@ -212,6 +231,9 @@ const UploadPage = () => {
           </div>
         </div>
       )}
+      </div>
+      </div>
+      </div>
 
       {/* Status Messages */}
       {uploadStatus === 'success' && (
