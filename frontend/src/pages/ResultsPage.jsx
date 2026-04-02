@@ -148,8 +148,14 @@ const ResultsPage = () => {
         api.get(`/documents/${id}`),
         api.get(`/evaluation/results/${id}`).catch(() => ({ data: null }))
       ]);
-      setDoc(docRes.data);
-      if (resRes.data?.status === 'processing') {
+      const docData = docRes.data;
+      setDoc(docData);
+
+      const isStillProcessing =
+        resRes.data?.status === 'processing' ||
+        ['pending', 'processing', 'completed'].includes(docData?.status);
+
+      if (isStillProcessing && !resRes.data?.final_score) {
         setIsProcessing(true);
         setResults(null);
       } else {

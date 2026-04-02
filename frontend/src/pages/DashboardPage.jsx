@@ -97,7 +97,7 @@ const DashboardPage = () => {
     }, hasActive ? 3000 : 10000); // 3s if active, 10s idle
 
     return () => clearInterval(intervalId);
-  }, [documents.length]); // Re-bind if list length changes (e.g. new upload), but not on status change to avoid jitter
+  }, [documents.map(d => d.status).join(',')]); // Re-bind when any doc's status changes
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -244,7 +244,7 @@ const DashboardPage = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {doc.status === 'graded' ? (
+                      {(doc.status === 'graded' || doc.status === 'evaluated') ? (
                         <span className="text-indigo-600 font-bold">{doc.final_score}</span>
                       ) : (
                         <span className="text-gray-400">-</span>

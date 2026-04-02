@@ -76,6 +76,21 @@ class FinalizeRequest(BaseModel):
     final_score: float
     overrides: dict
 
+
+def _assign_grade(score: float) -> str:
+    """Assign a letter grade based on the final score."""
+    if score >= 90: return "A+"
+    elif score >= 85: return "A"
+    elif score >= 80: return "A-"
+    elif score >= 75: return "B+"
+    elif score >= 70: return "B"
+    elif score >= 65: return "B-"
+    elif score >= 60: return "C+"
+    elif score >= 55: return "C"
+    elif score >= 50: return "C-"
+    else: return "F"
+
+
 @router.post("/results/{document_id}/finalize")
 async def finalize_evaluation(
     document_id: str,
@@ -94,27 +109,35 @@ async def finalize_evaluation(
     if doc["uploaded_by"] != str(current_user["_id"]) and current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to grade this document")
 
-    # 2. Update Evaluation
-    # We update the existing evaluation or create one if somehow missing (Upsert)
-    start_time = datetime.utcnow()
-    
+    # 2. Ensure evaluation exists (don't blindly upsert)
+    existing_eval = await db["evaluations"].find_one({"document_id": document_id})
+    if not existing_eval:
+        raise HTTPException(status_code=404, detail="No evaluation found for this document. Cannot finalize.")
+
+    # 3. Recalculate grade letter from the adjusted score
+    grade = _assign_grade(data.final_score)
+
+    # 4. Update Evaluation
     await db["evaluations"].update_one(
         {"document_id": document_id},
         {"$set": {
-            "document_id": document_id,  # Ensure this is set on insert
             "final_score": data.final_score,
+            "grade": grade,
             "overrides": data.overrides,
             "status": "finalized",
-            "finalized_at": start_time,
+            "finalized_at": datetime.utcnow(),
             "finalized_by": str(current_user["_id"])
         }},
-        upsert=True
     )
     
-    # 3. Update Document Status
+    # 5. Update Document Status and score
     await db["documents"].update_one(
         {"_id": ObjectId(document_id)},
-        {"$set": {"status": "graded"}}
+        {"$set": {
+            "status": "graded",
+            "final_score": data.final_score,
+        }}
     )
     
-    return {"message": "Grade finalized successfully", "final_score": data.final_score}
+    return {"message": "Grade finalized successfully", "final_score": data.final_score, "grade": grade}
+

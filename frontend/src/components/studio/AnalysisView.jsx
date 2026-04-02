@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     ArrowLeft, BrainCircuit, ShieldAlert, Scale, CheckCircle2,
     Highlighter, Info, Copy, FileText, ChevronRight, AlertTriangle,
@@ -72,6 +72,7 @@ const AnalysisView = ({ doc, results, onBack }) => {
     const [rubricCriteria, setRubricCriteria] = useState([]);
     const [pdfUrl, setPdfUrl] = useState(null);
     const [loadingPdf, setLoadingPdf] = useState(false);
+    const pdfUrlRef = useRef(null);
 
     // Only fetch PDF blob for PDF files
     useEffect(() => {
@@ -90,6 +91,7 @@ const AnalysisView = ({ doc, results, onBack }) => {
                 const docId = doc._id || doc.id;
                 const response = await api.get(`/documents/${docId}/view`, { responseType: 'blob' });
                 const url = URL.createObjectURL(response.data);
+                pdfUrlRef.current = url;
                 setPdfUrl(url);
             } catch (e) {
                 console.error("Failed to load PDF:", e);
@@ -99,9 +101,12 @@ const AnalysisView = ({ doc, results, onBack }) => {
         };
         loadPdf();
 
-        // Cleanup
+        // Cleanup using ref to avoid stale closure
         return () => {
-            if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+            if (pdfUrlRef.current) {
+                URL.revokeObjectURL(pdfUrlRef.current);
+                pdfUrlRef.current = null;
+            }
         };
     }, [doc]);
 
@@ -153,6 +158,24 @@ const AnalysisView = ({ doc, results, onBack }) => {
     // For this demo, we'll just display the text and overlay potential spans if we had them mapped.
     // Since we don't have robust offset mapping in frontend JS yet, we'll render plain text 
     // but list the errors effectively.
+
+    const handleDownload = async () => {
+        try {
+            const docId = doc._id || doc.id;
+            const response = await api.get(`/documents/${docId}/view`, { responseType: 'blob' });
+            const url = URL.createObjectURL(response.data);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = doc.original_filename || doc.filename || 'document';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Failed to download document:", error);
+            alert("Failed to download document. Please try again.");
+        }
+    };
 
     const handleFinalize = async () => {
         try {
@@ -217,14 +240,13 @@ const AnalysisView = ({ doc, results, onBack }) => {
                             <span className="text-xs text-slate-400">({doc.file_type?.toUpperCase()})</span>
                         </div>
                         <div className="flex gap-2">
-                            <a
-                                href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/documents/${doc._id || doc.id}/view`}
-                                download={doc.original_filename}
+                            <button
+                                onClick={handleDownload}
                                 className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border bg-white border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                                 title="Download document"
                             >
                                 <Download size={12} /> Download
-                            </a>
+                            </button>
                             <button
                                 onClick={() => setShowGrammar(!showGrammar)}
                                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${showGrammar ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-200 text-slate-500'}`}
@@ -284,13 +306,12 @@ const AnalysisView = ({ doc, results, onBack }) => {
                                     <AlertTriangle className="h-16 w-16 text-amber-400 mx-auto mb-4" />
                                     <p className="text-slate-600 font-medium mb-2">No content available</p>
                                     <p className="text-slate-400 text-sm mb-4">Text extraction may have failed</p>
-                                    <a
-                                        href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/documents/${doc._id || doc.id}/view`}
-                                        download={doc.original_filename}
+                                    <button
+                                        onClick={handleDownload}
                                         className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
                                     >
                                         <Download size={16} /> Download Original File
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -362,12 +383,12 @@ const AnalysisView = ({ doc, results, onBack }) => {
                                             </div>
                                         </div>
                                         {/* List matched docs if available */}
-                                        {plagiarism?.similar_documents?.map((match, i) => (
+                                        {plagiarism?.matches?.map((match, i) => (
                                             <div key={i} className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <span className="text-xs font-bold text-amber-800">{match.id_}</span>
+                                                    <span className="text-xs font-bold text-amber-800">{match.doc_id}</span>
                                                     <span className="text-xs font-bold bg-amber-200 text-amber-800 px-2 py-0.5 rounded">
-                                                        {(match.similarity * 100).toFixed(0)}%
+                                                        {match.similarity}%
                                                     </span>
                                                 </div>
                                             </div>

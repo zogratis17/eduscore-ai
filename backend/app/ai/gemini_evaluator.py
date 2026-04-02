@@ -24,19 +24,29 @@ MODEL_CHAIN = [
     "gemini-2.0-flash-lite",
 ]
 
+# Lazy-initialized model cache (avoids reconfiguring API key on every call)
+_configured = False
+_model_cache: Dict[str, Any] = {}
 
-def _create_model(model_name: str):
-    """Create a Gemini model instance."""
-    import google.generativeai as genai
 
-    genai.configure(api_key=settings.GEMINI_API_KEY)
-    return genai.GenerativeModel(
-        model_name,
-        generation_config={
-            "response_mime_type": "application/json",
-            "temperature": 0.3,
-        },
-    )
+def _get_model(model_name: str):
+    """Get or create a cached Gemini model instance."""
+    global _configured
+    if not _configured:
+        import google.generativeai as genai
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        _configured = True
+
+    if model_name not in _model_cache:
+        import google.generativeai as genai
+        _model_cache[model_name] = genai.GenerativeModel(
+            model_name,
+            generation_config={
+                "response_mime_type": "application/json",
+                "temperature": 0.3,
+            },
+        )
+    return _model_cache[model_name]
 
 
 EVALUATION_PROMPT = """You are an expert academic essay evaluator. Analyze the following essay and provide structured scores.
@@ -119,8 +129,8 @@ class GeminiEvaluator:
         for model_name in MODEL_CHAIN:
             try:
                 logger.info(f"Trying Gemini model: {model_name}")
-                model = _create_model(model_name)
-                response = model.generate_content(full_prompt)
+                model = _get_model(model_name)
+                response = await model.generate_content_async(full_prompt)
                 raw = response.text.strip()
 
                 # Parse JSON response

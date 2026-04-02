@@ -31,7 +31,8 @@ const RubricSelector = ({ selectedRubricId, onSelect }) => {
         };
 
         fetchRubrics();
-    }, [onSelect, selectedRubricId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     if (loading) return <div className="text-sm text-gray-500">Loading rubrics...</div>;
     if (error) return <div className="text-sm text-red-500">Error loading rubrics. Using system default.</div>;

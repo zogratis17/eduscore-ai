@@ -38,7 +38,7 @@ async def get_dashboard_stats(
         {
             "$match": {
                 "uploaded_by": user_id,
-                "status": "evaluated",
+                "status": {"$in": ["evaluated", "graded"]},
                 "final_score": {"$ne": None},
                 "created_at": {"$gte": thirty_days_ago},
             }
@@ -66,7 +66,7 @@ async def get_dashboard_stats(
         {
             "$match": {
                 "uploaded_by": user_id,
-                "status": "evaluated",
+                "status": {"$in": ["evaluated", "graded"]},
                 "final_score": {"$ne": None},
                 "created_at": {"$gte": sixty_days_ago, "$lt": thirty_days_ago},
             }

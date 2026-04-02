@@ -96,7 +96,7 @@ Analyze the following essay and its evaluation scores, then provide a **concise 
 5. Do NOT mention the numerical scores — focus on qualitative assessment
 6. Write as a single cohesive paragraph, not a bulleted list"""
 
-        response = model.generate_content(prompt)
+        response = await model.generate_content_async(prompt)
         feedback = response.text.strip()
 
         if feedback:

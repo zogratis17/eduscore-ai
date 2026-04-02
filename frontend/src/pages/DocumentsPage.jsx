@@ -45,10 +45,12 @@ const DocumentsPage = () => {
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
+      case 'graded': return 'bg-emerald-100 text-emerald-800';
       case 'evaluated': return 'bg-green-100 text-green-800';
       case 'completed': return 'bg-blue-100 text-blue-800';
       case 'processing': return 'bg-yellow-100 text-yellow-800';
-      case 'failed': return 'bg-red-100 text-red-800';
+      case 'failed':
+      case 'failed_evaluation': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -152,7 +154,7 @@ const DocumentsPage = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex justify-end gap-2">
-                                        {(doc.status === 'completed' || doc.status === 'evaluated') && (
+                                        {(doc.status === 'completed' || doc.status === 'evaluated' || doc.status === 'graded') && (
                                             <Link 
                                                 to={`/results/${doc.id || doc._id}`}
                                                 className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-md transition-colors"

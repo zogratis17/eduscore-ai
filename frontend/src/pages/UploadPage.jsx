@@ -61,7 +61,7 @@ const UploadPage = () => {
             'Content-Type': 'multipart/form-data',
           },
         });
-        lastDocId = response.data.id;
+        lastDocId = response.data._id || response.data.id;
       }
       setUploadStatus('success');
 
