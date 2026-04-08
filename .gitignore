@@ -50,6 +50,9 @@ venv.bak/
 # PyCharm
 *.iml
 
+# Node
+node_modules/
+
 # Node/Frontend
 frontend/node_modules/
 frontend/dist/
